@@ -3,17 +3,33 @@ import (
 	"fmt"
 	"net/http"
 	"io"
+	"encoding/json"
 	"context"
 	"github.com/negeek/short-access/db"
 	"strings"
+	"github.com/jackc/pgx/v4/pgxpool"
 		)
 
-dbPool, dbErr := db.Connect()
-// i need to know if the user is authenticated and if the token provided is correct.
+var dbPool 	*pgxpool.Pool
+var dbErr 	error
 
+// i need to know if the user is authenticated and if the token provided is correct.
 func AuthenticationMiddleware(handler http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		bypassUrls := []string{"/api/v1/user_mgt/signup/", "/api/v1/user_mgt/signin/"}
+        
+        // Check if the requested URL matches any of the bypass URLs
+        for _, url := range bypassUrls {
+            if strings.HasPrefix(r.URL.Path, url) {
+                // The requested URL matches a bypass URL, so skip the authentication middleware
+                handler.ServeHTTP(w, r)
+                return
+            }
+        }
+		
         // get the token 
+		dbPool, dbErr = db.Connect()
 		bearerToken:= r.Header.Get("Authorization")
 		if bearerToken==""{
 			response:=map[string]interface{}{
@@ -22,13 +38,14 @@ func AuthenticationMiddleware(handler http.Handler) http.Handler {
 				},
 			}
 			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
 			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("Could not read body: %s\n", err)
+			fmt.Printf("Provide auth token")
 			return	
 		}
 		// check database if token actually exist and then the associated user should be passed as context
-		bearer, token := strings.split(bearerToken, " ")
+		bearerTokenArr := strings.Split(bearerToken, " ")
+		bearer, token:=bearerTokenArr[0], bearerTokenArr[1]
 		if bearer!="Bearer"{
 			response:=map[string]interface{}{
 				"success": false,
@@ -36,9 +53,9 @@ func AuthenticationMiddleware(handler http.Handler) http.Handler {
 				},
 			}
 			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.http.StatusUnauthorized)
+			w.WriteHeader(http.StatusUnauthorized)
 			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("Could not read body: %s\n", err)
+			fmt.Printf("Invalid token")
 			return	
 		}
 
@@ -49,6 +66,7 @@ func AuthenticationMiddleware(handler http.Handler) http.Handler {
 				"success": false,
 				"data":map[string]string{
 				},
+				"message": dbErr,
 
 			}
 			responseJson,_:=json.Marshal(response)
