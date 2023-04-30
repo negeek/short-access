@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/negeek/short-access/db"
 		)
 
 type User struct {
@@ -18,7 +19,23 @@ type User struct {
 	Password  string `json:"password"`
 }
 
-func SignUp(w http.ResponseWriter, r *http.Request, dbPool *pgxpool.Pool){
+func SignUp(w http.ResponseWriter, r *http.Request){
+	dbPool, connErr := db.Connect()
+	if connErr != nil {
+		response:=map[string]interface{}{
+			"success": false,
+			"data":map[string]string{
+			},
+			"message": connErr,
+
+		}
+		responseJson,_:=json.Marshal(response)
+		w.WriteHeader(http.StatusInternalServerError )
+		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+		fmt.Printf("db error: %s\n", connErr)
+		return
+	}
+
 	// get the email and password for a post request
 	if r.Method == "POST"{
 		body, err:= ioutil.ReadAll(r.Body)
@@ -130,7 +147,22 @@ func SignUp(w http.ResponseWriter, r *http.Request, dbPool *pgxpool.Pool){
 
 }
 
-func SignIn(w http.ResponseWriter, r *http.Request, dbPool *pgxpool.Pool){
+func SignIn(w http.ResponseWriter, r *http.Request){
+	dbPool, connErr := db.Connect()
+	if connErr != nil {
+		response:=map[string]interface{}{
+			"success": false,
+			"data":map[string]string{
+			},
+			"message": connErr,
+
+		}
+		responseJson,_:=json.Marshal(response)
+		w.WriteHeader(http.StatusInternalServerError )
+		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+		fmt.Printf("db error: %s\n", connErr)
+		return
+	}
 	// get the email and password for a post request
 	if r.Method == "POST"{
 		body, err:= ioutil.ReadAll(r.Body)
