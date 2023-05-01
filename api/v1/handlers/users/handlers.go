@@ -26,7 +26,7 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": connErr,
+				"message": connErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -43,7 +43,7 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": err,
+				"message": err.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -63,7 +63,7 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": jsErr,
+				"message": jsErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -80,7 +80,7 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr,
+				"message": dbErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -115,7 +115,7 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr2,
+				"message": dbErr2.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -153,7 +153,7 @@ func SignIn(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": connErr,
+				"message": connErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -170,7 +170,7 @@ func SignIn(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": err,
+				"message": err.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -187,7 +187,7 @@ func SignIn(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": jsErr,
+				"message": jsErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -207,7 +207,7 @@ func SignIn(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr,
+				"message": dbErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -225,7 +225,7 @@ func SignIn(w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr,
+				"message": dbErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)

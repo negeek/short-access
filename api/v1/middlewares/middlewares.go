@@ -17,7 +17,7 @@ var dbErr 	error
 func AuthenticationMiddleware(handler http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		bypassUrls := []string{"/api/v1/user_mgt/signup/", "/api/v1/user_mgt/signin/"}
+		bypassUrls := []string{"/api/v1/user_mgt/signup/", "/api/v1/user_mgt/signin/", "/"}
         
         // Check if the requested URL matches any of the bypass URLs
         for _, url := range bypassUrls {
@@ -30,6 +30,21 @@ func AuthenticationMiddleware(handler http.Handler) http.Handler {
 
         // get the token 
 		dbPool, dbErr = db.Connect()
+		if dbErr != nil {
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": dbErr.Error(),
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusInternalServerError )
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db connection error: %s\n", dbErr)
+			return
+		}
+
 		bearerToken:= r.Header.Get("Authorization")
 		if bearerToken==""{
 			response:=map[string]interface{}{
@@ -66,7 +81,7 @@ func AuthenticationMiddleware(handler http.Handler) http.Handler {
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr,
+				"message": dbErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)

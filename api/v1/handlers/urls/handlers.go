@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/negeek/short-access/db"
+	"github.com/gorilla/mux"
 		)
 
 
@@ -54,7 +55,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": connErr,
+				"message": connErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -70,7 +71,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": err,
+				"message": err.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -92,7 +93,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": jsErr,
+				"message": jsErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
@@ -115,11 +116,11 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr,
+				"message": dbErr.Error(),
 
 			}
 			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusUnauthorized)
+			w.WriteHeader(http.StatusBadRequest)
 			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
 			fmt.Printf("db error: %s\n", dbErr)
 			return
@@ -138,7 +139,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 					"success": false,
 					"data":map[string]string{
 					},
-					"message": dbErr1,
+					"message": dbErr1.Error(),
 
 				}
 				responseJson,_:=json.Marshal(response)
@@ -178,6 +179,49 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		responseJson,_:=json.Marshal(response)
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+		return
+	}
+}
+
+func UrlRedirect( w http.ResponseWriter, r *http.Request){
+	if r.Method=="GET"{
+		dbPool, connErr := db.Connect()
+		if connErr != nil {
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": connErr.Error(),
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusInternalServerError)
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db connection error: %s\n", connErr)
+			return
+		}
+
+		// get the original url
+		shortUrl := mux.Vars(r)["slug"]
+		var originalUrl string
+		dbErr:= dbPool.QueryRow(context.Background(),  "select original_url from urls where short_url=$1", shortUrl).Scan(&originalUrl)
+		if dbErr !=nil{
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": dbErr.Error(),
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusBadRequest)
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db error: %s\n", dbErr)
+			return
+		}
+
+		fmt.Println(originalUrl)
+		http.Redirect(w, r, originalUrl, http.StatusTemporaryRedirect)
 		return
 	}
 }
