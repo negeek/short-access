@@ -17,7 +17,7 @@ var dbErr 	error
 func AuthenticationMiddleware(handler http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		bypassUrls := []string{"/api/v1/user_mgt/signup/", "/api/v1/user_mgt/signin/", "/"}
+		bypassUrls := []string{"/api/v1/user_mgt/join/", "/"}
         
         // Check if the requested URL matches any of the bypass URLs
         for _, url := range bypassUrls {
