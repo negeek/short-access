@@ -8,9 +8,6 @@ import (
 	"os"
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/negeek/short-access/db"
 		)
 
@@ -49,137 +46,138 @@ func base10To62(quotient int)string{
 
 
 func Shorten( w http.ResponseWriter, r *http.Request){
-	baseUrl:=os.Getenv("BASE_URL")
-	dbPool, connErr := db.Connect()
-	if connErr != nil {
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
-			},
-			"message": connErr,
-
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusInternalServerError )
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		fmt.Printf("db connection error: %s\n", connErr)
-		return
-	}
-
-	body, err:= ioutil.ReadAll(r.Body)
-	if err != nil{
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
-			},
-			"message": err,
-
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		fmt.Printf("Could not read body: %s\n", err)
-		return
-	}
-
-	type UrlBody struct{
-		Url string `json:"url"`
-	}
-
-	var url *UrlBody
-	jsErr:=json.Unmarshal([]byte(body),&url)
-
-	if jsErr != nil{
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
-			},
-			"message": jsErr,
-
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusBadRequest)
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		fmt.Printf("Error unmarshaling json: %s\n", jsErr)
-		return
-	}
-
-
-	// get the user_id from context.
-	//check if the url exists
-	// if not get latest id and the convert it to base62 and store the new url to db
-	userId := r.Context().Value("user")
-	var urlId int
-	var shortUrl string
-	dbErr:= dbPool.QueryRow(context.Background(),  "select id, short_url from urls where original_url=$1", url.Url).Scan(&urlId, &shortUrl)
-	if dbErr != nil | dbErr!=pgx.ErrNoRows {
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
-			},
-			"message": dbErr,
-
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusUnauthorized)
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		fmt.Printf("db error: %s\n", dbErr)
-		return
-	}
-	if dbErr==pgx.ErrNoRows{
-		// get latest id in db
-		var lastId int
-		dbErr=dbPool.QueryRow(context.Background(),  "select last_value from urls_id_seq").Scan(&lastId)
-		nextId:=lastId+1
-		newShortUrl:=base10To62(nextId)
-
-		// Insert the new user into the database
-		_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
-		if dbErr1 != nil {
+	if r.Method == "POST"{
+		baseUrl:=os.Getenv("BASE_URL")
+		dbPool, connErr := db.Connect()
+		if connErr != nil {
 			response:=map[string]interface{}{
 				"success": false,
 				"data":map[string]string{
 				},
-				"message": dbErr1,
+				"message": connErr,
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusInternalServerError )
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db connection error: %s\n", connErr)
+			return
+		}
+
+		body, err:= ioutil.ReadAll(r.Body)
+		if err != nil{
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": err,
 
 			}
 			responseJson,_:=json.Marshal(response)
 			w.WriteHeader(http.StatusBadRequest)
 			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db error1: %s\n", dbErr1)
+			fmt.Printf("Could not read body: %s\n", err)
 			return
 		}
+
+		type UrlBody struct{
+			Url string `json:"url"`
+		}
+
+		var url *UrlBody
+		jsErr:=json.Unmarshal([]byte(body),&url)
+
+		if jsErr != nil{
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": jsErr,
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusBadRequest)
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("Error unmarshaling json: %s\n", jsErr)
+			return
+		}
+
+
+		// get the user_id from context.
+		//check if the url exists
+		// if not get latest id and the convert it to base62 and store the new url to db
+		userId := r.Context().Value("user")
+		var urlId int
+		var shortUrl string
+		dbErr:= dbPool.QueryRow(context.Background(),  "select id, short_url from urls where original_url=$1 and user_id=$2", url.Url, userId).Scan(&urlId, &shortUrl)
+		if dbErr.Error()!="no rows in result set" {
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": dbErr,
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusUnauthorized)
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db error: %s\n", dbErr)
+			return
+		}
+		if dbErr.Error()=="no rows in result set" {
+			// get latest id in db
+			var lastId int
+			dbErr=dbPool.QueryRow(context.Background(),  "select last_value from urls_id_seq").Scan(&lastId)
+			nextId:=lastId+1
+			newShortUrl:=base10To62(nextId)
+
+			// Insert the new user into the database
+			_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
+			if dbErr1 != nil {
+				response:=map[string]interface{}{
+					"success": false,
+					"data":map[string]string{
+					},
+					"message": dbErr1,
+
+				}
+				responseJson,_:=json.Marshal(response)
+				w.WriteHeader(http.StatusBadRequest)
+				io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+				fmt.Printf("db error1: %s\n", dbErr1)
+				return
+			}
+			response:=map[string]interface{}{
+				"success": true,
+				"data":map[string]string{
+					"origin":url.Url,
+					"slug":newShortUrl,
+					"url": baseUrl+"/"+newShortUrl,
+				},
+			}
+			responseJson,rjsErr:=json.Marshal(response)
+			if rjsErr != nil{
+				fmt.Printf("Error marshaling response json: %s\n", rjsErr)
+			}
+			w.WriteHeader(http.StatusCreated)
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			return
+		
+
+		}
+
 		response:=map[string]interface{}{
-			"success": true,
+			"success": false,
 			"data":map[string]string{
 				"origin":url.Url,
-				"slug":newShortUrl,
-				"url": baseUrl+"/"+newShortUrl,
+				"slug":shortUrl,
+				"url": baseUrl+"/"+shortUrl,
 			},
+
 		}
-		responseJson,rjsErr:=json.Marshal(response)
-		if rjsErr != nil{
-			fmt.Printf("Error marshaling response json: %s\n", rjsErr)
-		}
-		w.WriteHeader(http.StatusCreated)
+		responseJson,_:=json.Marshal(response)
+		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
 		return
-	
-
 	}
-
-	response:=map[string]interface{}{
-		"success": false,
-		"data":map[string]string{
-			"origin":url.Url,
-			"slug":ShortUrl,
-			"url": baseUrl+"/"+ShortUrl,
-		},
-
-	}
-	responseJson,_:=json.Marshal(response)
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-	return
-
 }

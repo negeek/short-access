@@ -27,7 +27,7 @@ func AuthenticationMiddleware(handler http.Handler) http.Handler {
                 return
             }
         }
-		
+
         // get the token 
 		dbPool, dbErr = db.Connect()
 		bearerToken:= r.Header.Get("Authorization")

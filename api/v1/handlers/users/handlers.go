@@ -8,7 +8,6 @@ import (
 	"os"
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/negeek/short-access/db"
@@ -20,24 +19,22 @@ type User struct {
 }
 
 func SignUp(w http.ResponseWriter, r *http.Request){
-	dbPool, connErr := db.Connect()
-	if connErr != nil {
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
-			},
-			"message": connErr,
-
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusInternalServerError )
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		fmt.Printf("db error: %s\n", connErr)
-		return
-	}
-
-	// get the email and password for a post request
 	if r.Method == "POST"{
+		dbPool, connErr := db.Connect()
+		if connErr != nil {
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": connErr,
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusInternalServerError )
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db error: %s\n", connErr)
+			return
+		}
 		body, err:= ioutil.ReadAll(r.Body)
 		// if there is error reading body set statuscode and print out the error
 
@@ -148,23 +145,23 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 }
 
 func SignIn(w http.ResponseWriter, r *http.Request){
-	dbPool, connErr := db.Connect()
-	if connErr != nil {
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
-			},
-			"message": connErr,
-
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusInternalServerError )
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		fmt.Printf("db error: %s\n", connErr)
-		return
-	}
 	// get the email and password for a post request
 	if r.Method == "POST"{
+		dbPool, connErr := db.Connect()
+		if connErr != nil {
+			response:=map[string]interface{}{
+				"success": false,
+				"data":map[string]string{
+				},
+				"message": connErr,
+
+			}
+			responseJson,_:=json.Marshal(response)
+			w.WriteHeader(http.StatusInternalServerError )
+			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+			fmt.Printf("db error: %s\n", connErr)
+			return
+		}
 		body, err:= ioutil.ReadAll(r.Body)
 		// if there is error reading body set statuscode and print out the error
 
