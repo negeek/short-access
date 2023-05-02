@@ -1,9 +1,11 @@
+# Short-Access 
+
 Short-Access is a free and powerful URL Shortener built with Golang.
 
 ### How to Use
 ##### To sign up:
 
-`curl -X POST 'http://localhost:8080/api/v1/user_mgt/join/' -H 'Content-Type: application/json' -d'{"email":"dlionking77@gmail.com","password":"dlionking77"}'`
+`curl -X POST 'http://localhost:8080/api/v1/user_mgt/join/' -H 'Content-Type: application/json' -d'{"email":"patrick@gmail.com","password":"dlionking77"}'`
 
 ###### example response: 
 

@@ -37,11 +37,11 @@ func base10To62(quotient int)string{
 	}
 
 	// reverse the resStr,that is the correct result
-	resultArr := []byte(resStr)
-    for i, j := 0, len(resultArr)-1; i < j; i, j = i+1, j-1 {
-        resultArr[i], resultArr[j] = resultArr[j], resultArr[i]
+	resArr := []byte(resStr)
+    for i, j := 0, len(resArr)-1; i < j; i, j = i+1, j-1 {
+        resArr[i], resArr[j] = resArr[j], resArr[i]
     }
-	resStr=string(resultArr)
+	resStr=string(resArr)
     return resStr
 }
 
@@ -132,7 +132,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 			nextId:=lastId+1
 			newShortUrl:=base10To62(nextId)
 
-			// Insert the new user into the database
+			// Insert the new url into the database
 			_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
 			if dbErr1 != nil {
 				response:=map[string]interface{}{
