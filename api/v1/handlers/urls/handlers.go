@@ -1,7 +1,7 @@
 package urls 
 
 import (
-	"fmt"
+	//"fmt"
 	"net/http"
 	"io/ioutil"
 	"os"
@@ -57,7 +57,6 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 				// Insert the new url into the database
 				_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
 				if dbErr1 != nil {
-					fmt.Println("1")
 					utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
 					return
 					
