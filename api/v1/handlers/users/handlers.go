@@ -1,16 +1,16 @@
 package users
 
 import (
-	"fmt"
+	//"fmt"
 	"net/http"
 	"io/ioutil"
-	"io"
 	"os"
 	"context"
 	"encoding/json"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/negeek/short-access/db"
+	"github.com/negeek/short-access/utils"
 		)
 
 type User struct {
@@ -22,35 +22,15 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 	if r.Method == "POST"{
 		dbPool, connErr := db.Connect()
 		if connErr != nil {
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": connErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusInternalServerError )
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db error: %s\n", connErr)
-			return
+			utils.JsonResponse(w, false, http.StatusInternalServerError , connErr.Error(), nil)
+			return	
 		}
 		body, err:= ioutil.ReadAll(r.Body)
 		// if there is error reading body set statuscode and print out the error
 
 		if err != nil{
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": err.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("Could not read body: %s\n", err)
-			return
+			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+			return	
 		}
 
 		// create user
@@ -59,35 +39,15 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 		jsErr:=json.Unmarshal([]byte(body),&newUser)
 
 		if jsErr != nil{
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": jsErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("Error unmarshaling json: %s\n", jsErr)
-			return
+			utils.JsonResponse(w, false, http.StatusBadRequest , jsErr.Error(), nil)
+			return	
 		}
 
 		// Insert the new user into the database
 		_, dbErr := dbPool.Exec(context.Background(), "INSERT INTO users (id, password, email) VALUES ($1, $2, $3)",newUserId, newUser.Password, newUser.Email)
 		if dbErr != nil {
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": dbErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db error1: %s\n", dbErr)
-			return
+			utils.JsonResponse(w, false, http.StatusBadRequest , dbErr.Error(), nil)
+			return	
 		}
 
 		//create token using the user details
@@ -104,42 +64,21 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 		})
 		signedToken, errToken := jwtToken.SignedString(key) 
 		if errToken != nil{
-			fmt.Printf("token error: %s\n", errToken)
-			return
+			utils.JsonResponse(w, false, http.StatusBadRequest , "Token Error", nil)
+			return	
 		}
 
 		// store it in db
 		_, dbErr2 := dbPool.Exec(context.Background(), "INSERT INTO tokens (user_id, token) VALUES ($1, $2)",newUserId,signedToken)
 		if dbErr2 != nil {
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": dbErr2.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db error2: %s\n", dbErr2)
-			return
+			utils.JsonResponse(w, false, http.StatusBadRequest , dbErr2.Error(), nil)
+			return	
 		}
 
 		// now return user token
-		response:=map[string]interface{}{
-			"success": true,
-			"data":map[string]string{
-				"email":newUser.Email,
-				"access_token":signedToken,
-			},
-		}
-		responseJson,rjsErr:=json.Marshal(response)
-		if rjsErr != nil{
-			fmt.Printf("Error marshaling response json: %s\n", rjsErr)
-		}
-		w.WriteHeader(http.StatusCreated)
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-		return
+		utils.JsonResponse(w, true, http.StatusCreated , "Successfully Joined", map[string]interface{}{"email":newUser.Email,
+		"access_token":signedToken})
+		return	
 	}
 
 }

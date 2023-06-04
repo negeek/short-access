@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"github.com/negeek/short-access/db"
 	"github.com/gorilla/mux"
+	"github.com/negeek/short-access/utils"
 		)
 
 
@@ -51,33 +52,13 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		baseUrl:=os.Getenv("BASE_URL")
 		dbPool, connErr := db.Connect()
 		if connErr != nil {
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": connErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusInternalServerError )
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db connection error: %s\n", connErr)
+			utils.JsonResponse(w, false, http.StatusInternalServerError , connErr.Error(), nil)
 			return
 		}
 
 		body, err:= ioutil.ReadAll(r.Body)
 		if err != nil{
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": err.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("Could not read body: %s\n", err)
+			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 			return
 		}
 
@@ -89,20 +70,9 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		jsErr:=json.Unmarshal([]byte(body),&url)
 
 		if jsErr != nil{
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": jsErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("Error unmarshaling json: %s\n", jsErr)
+			utils.JsonResponse(w, false, http.StatusBadRequest , jsErr.Error(), nil)
 			return
 		}
-
 
 		// get the user_id from context.
 		//check if the url exists
@@ -112,17 +82,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		var shortUrl string
 		dbErr:= dbPool.QueryRow(context.Background(),  "select id, short_url from urls where original_url=$1 and user_id=$2", url.Url, userId).Scan(&urlId, &shortUrl)
 		if dbErr.Error()!="no rows in result set" {
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": dbErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db error: %s\n", dbErr)
+			utils.JsonResponse(w, false, http.StatusBadRequest , dbErr.Error(), nil)
 			return
 		}
 		if dbErr.Error()=="no rows in result set" {
@@ -135,50 +95,24 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 			// Insert the new url into the database
 			_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
 			if dbErr1 != nil {
-				response:=map[string]interface{}{
-					"success": false,
-					"data":map[string]string{
-					},
-					"message": dbErr1.Error(),
-
-				}
-				responseJson,_:=json.Marshal(response)
-				w.WriteHeader(http.StatusBadRequest)
-				io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-				fmt.Printf("db error1: %s\n", dbErr1)
+				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
 				return
+				
 			}
-			response:=map[string]interface{}{
-				"success": true,
-				"data":map[string]string{
-					"origin":url.Url,
-					"slug":newShortUrl,
-					"url": baseUrl+"/"+newShortUrl,
-				},
-			}
-			responseJson,rjsErr:=json.Marshal(response)
-			if rjsErr != nil{
-				fmt.Printf("Error marshaling response json: %s\n", rjsErr)
-			}
-			w.WriteHeader(http.StatusCreated)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			return
-		
-
-		}
-
-		response:=map[string]interface{}{
-			"success": false,
-			"data":map[string]string{
+			
+			utils.JsonResponse(w, true, http.StatusCreated , dbErr.Error(), map[string]interface{}{
 				"origin":url.Url,
-				"slug":shortUrl,
-				"url": baseUrl+"/"+shortUrl,
-			},
+				"slug":newShortUrl,
+				"url": baseUrl+"/"+newShortUrl,
+			})
+			return
+			}
 
-		}
-		responseJson,_:=json.Marshal(response)
-		w.WriteHeader(http.StatusOK)
-		io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
+		utils.JsonResponse(w, true, http.StatusOK , dbErr.Error(), map[string]interface{}{
+			"origin":url.Url,
+			"slug":shortUrl,
+			"url": baseUrl+"/"+shortUrl,
+		})
 		return
 	}
 }
