@@ -121,17 +121,7 @@ func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	if r.Method=="GET"{
 		dbPool, connErr := db.Connect()
 		if connErr != nil {
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": connErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusInternalServerError)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db connection error: %s\n", connErr)
+			utils.JsonResponse(w, false, http.StatusInternalServerError , connErr.Error(), nil)
 			return
 		}
 
@@ -140,21 +130,9 @@ func UrlRedirect( w http.ResponseWriter, r *http.Request){
 		var originalUrl string
 		dbErr:= dbPool.QueryRow(context.Background(),  "select original_url from urls where short_url=$1", shortUrl).Scan(&originalUrl)
 		if dbErr !=nil{
-			response:=map[string]interface{}{
-				"success": false,
-				"data":map[string]string{
-				},
-				"message": dbErr.Error(),
-
-			}
-			responseJson,_:=json.Marshal(response)
-			w.WriteHeader(http.StatusBadRequest)
-			io.WriteString(w, fmt.Sprintf("%s\n",responseJson))
-			fmt.Printf("db error: %s\n", dbErr)
+			utils.JsonResponse(w, false, http.StatusBadRequest , dbErr.Error(), nil)
 			return
 		}
-
-		fmt.Println(originalUrl)
 		http.Redirect(w, r, originalUrl, http.StatusTemporaryRedirect)
 		return
 	}
