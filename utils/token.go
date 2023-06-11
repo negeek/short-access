@@ -11,7 +11,7 @@ type UserClaim struct {
 	ID    string
 	Email string
 }
-
+var userClaim UserClaim
 func CreateJwtToken(id string, email string, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, UserClaim{
 		RegisteredClaims: jwt.RegisteredClaims{},
@@ -29,15 +29,15 @@ func CreateJwtToken(id string, email string, name string) (string, error) {
 	return signedString, nil
 }
 
-func VerifyJwt(tokenStr string) (interface{}, error) {
+func VerifyJwt(jwtToken string) (interface{}, error) {
 	// Parse and validate the JWT token
-	token, err := jwt.ParseWithClaims(jwtToken, &UserClaim, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(jwtToken, &userClaim, func(token *jwt.Token) (interface{}, error) {
 		return []byte(os.Getenv("AUTH_KEY")), nil
 	})
 	if err != nil {
 		return  "", err.Error()
 	}
-	return UserClaim, nil
+	return userClaim, nil
 }
 
 
