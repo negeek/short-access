@@ -23,14 +23,15 @@ func main(){
 	
 	//custom servermutiplexer
 	router := mux.NewRouter()
-	router.HandleFunc("/{slug}", urls.UrlRedirect)
+	router.Use(middlewares.CORS)
+	router.HandleFunc("/{slug}", urls.UrlRedirect).Methods("GET")
 
 	user_mgt := router.PathPrefix("/api/v1/user_mgt").Subrouter()
-	user_mgt.HandleFunc("/join/", users.SignUp)
+	user_mgt.HandleFunc("/join/", users.SignUp).Methods("POST")
 
 	url_mgt:=router.PathPrefix("/api/v1/url").Subrouter()
 	url_mgt.Use(middlewares.AuthenticationMiddleware)
-	url_mgt.HandleFunc("/shorten/", urls.Shorten)
+	url_mgt.HandleFunc("/shorten/", urls.Shorten).Methods("POST")
 
 	
 	//custom server
