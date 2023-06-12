@@ -17,4 +17,4 @@ Short-Access is a free and powerful URL Shortener built with Golang.
 
 ###### example response: 
 
-`{"data":{"origin":"https://pkg.go.dev/net/http#pkg-constants","slug":"2","url":"http://localhost:8080/2"},"success":true}`
+`{"data":{"origin":"https://pkg.go.dev/net/http#pkg-constants","slug":"000000002","url":"http://localhost:8080/000000002"},"success":true}`
