@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/negeek/short-access/api/v1/handlers/users"
-	"github.com/negeek/short-access/middlewares"
+	"github.com/negeek/short-access/middlewares/v1"
 	"github.com/negeek/short-access/api/v1/handlers/urls"
 		)
 

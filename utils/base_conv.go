@@ -1,6 +1,5 @@
 package utils
-
-func Base10To62(quotient int)string{
+func ShortAccess(quotient int, resultLength int)string{
 	numMap:=map[int]string{
 		0:"0",1:"1",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",
 		10:"A",11:"B",12:"C",13:"D",14:"E",15:"F",16:"G",17:"H",18:"I",
@@ -29,5 +28,16 @@ func Base10To62(quotient int)string{
         resArr[i], resArr[j] = resArr[j], resArr[i]
     }
 	resStr=string(resArr)
+
+	//pad the string if length is less than resultLength
+	if len(resStr)< resultLength{
+		num_zeros:=resultLength-len(resStr)
+		zeros:=""
+		for i:=0; i<num_zeros;i++{
+			zeros+=string("0")
+		}
+		res:= zeros+resStr
+		return res
+	}
     return resStr
 }

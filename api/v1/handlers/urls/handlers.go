@@ -15,6 +15,7 @@ import (
 func Shorten( w http.ResponseWriter, r *http.Request){
 	if r.Method == "POST"{
 		baseUrl:=os.Getenv("BASE_URL")
+		url_length:=9
 		dbPool, connErr := db.Connect()
 		if connErr != nil {
 			utils.JsonResponse(w, false, http.StatusInternalServerError , connErr.Error(), nil)
@@ -40,7 +41,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		}
 
 		// get the user_id from context.
-		//check if the url exists
+		// check if the url exists
 		// if not get latest id and the convert it to base62 and store the new url to db
 		userId := r.Context().Value("user")
 		var urlId int
@@ -52,8 +53,8 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 				var lastId int
 				dbErr=dbPool.QueryRow(context.Background(),  "select max(id) from urls").Scan(&lastId)
 				nextId:=lastId+1
-				newShortUrl:= utils.Base10To62(nextId)
-				fmt.Println(nextId)
+				newShortUrl:= utils.ShortAccess(nextId, url_length)
+	
 				// Insert the new url into the database
 				_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
 				if dbErr1 != nil {
