@@ -4,10 +4,10 @@ import (
 	//"fmt"
 	"net/http"
 	"io/ioutil"
-	"os"
+	//"os"
 	"context"
 	"encoding/json"
-	"github.com/golang-jwt/jwt/v5"
+	//"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/negeek/short-access/db"
 	"github.com/negeek/short-access/utils"
@@ -51,27 +51,9 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 		}
 
 		//create token using the user details
-		var (
-			key []byte
-			jwtToken   *jwt.Token
-			signedToken string
-		)
-		key = []byte(os.Getenv("AUTH_KEY"))
-		jwtToken = jwt.NewWithClaims(jwt.SigningMethodHS256, 
-		jwt.MapClaims{ 
-			"id": newUserId,
-			"email": newUser.Email, 
-		})
-		signedToken, errToken := jwtToken.SignedString(key) 
+		signedToken, errToken:=utils.CreateJwtToken(newUserId,newUser.Email)
 		if errToken != nil{
 			utils.JsonResponse(w, false, http.StatusBadRequest , "Token Error", nil)
-			return	
-		}
-
-		// store it in db
-		_, dbErr2 := dbPool.Exec(context.Background(), "INSERT INTO tokens (user_id, token) VALUES ($1, $2)",newUserId,signedToken)
-		if dbErr2 != nil {
-			utils.JsonResponse(w, false, http.StatusBadRequest , dbErr2.Error(), nil)
 			return	
 		}
 
