@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"fmt"
+	//"fmt"
 	"net/http"
 )
 

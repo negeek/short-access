@@ -12,6 +12,16 @@ import (
 	"github.com/negeek/short-access/utils"
 		)
 
+type NumberStore struct {
+	Start int
+	Number int
+	Step int
+	End int
+}
+
+// Depending on traffic. But i will be using up 100 numbers  before storing in DB
+var numberStore=&NumberStore{0,0,100,100}
+
 func Shorten( w http.ResponseWriter, r *http.Request){
 	baseUrl:=os.Getenv("BASE_URL")
 	url_length:=9
@@ -38,48 +48,66 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , jsErr.Error(), nil)
 		return
 	}
-
-	// get the user_id from context.
-	// check if the url exists
-	// if not get latest id and the convert it to base62 and store the new url to db
-	userId := r.Context().Value("user")
-	var urlId int
-	var shortUrl string
-	dbErr:= dbPool.QueryRow(context.Background(), "select id, short_url from urls where original_url=$1 and user_id=$2", url.Url, userId).Scan(&urlId, &shortUrl)
-	if dbErr!=nil {
-		if dbErr.Error()=="no rows in result set" {
-			// get latest id in db
-			var lastId int
-			dbErr=dbPool.QueryRow(context.Background(),  "select max(id) from urls").Scan(&lastId)
-			nextId:=lastId+1
-			newShortUrl:= utils.ShortAccess(nextId, url_length)
-
-			// Insert the new url into the database
-			_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (id, user_id, original_url, short_url) VALUES ($1, $2, $3, $4)",nextId, userId, url.Url, newShortUrl)
+	// Handle 100 requests at once
+	if numberStore.Number==0{
+		// Probably server just started or it was shutdown and started again
+		// get latest number
+		var num int
+		dbErr:=dbPool.QueryRow(context.Background(),  "select coalesce(max(number), 0) FROM numbers").Scan(&num)
+		if dbErr != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest, dbErr.Error(), nil)
+			return
+		}
+		// update the struct
+		numberStore.Start=num+1
+		numberStore.Number=numberStore.Start
+		numberStore.End=numberStore.Start+numberStore.Step
+		
+		// Insert the End number in numbers table in db
+		_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO numbers (number) VALUES ($1)",numberStore.End)
 			if dbErr1 != nil {
 				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
 				return
 				
 			}
 			
-			utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
-				"origin":url.Url,
-				"slug":newShortUrl,
-				"url": baseUrl+"/"+newShortUrl,
-			})
-			return
+	}else{
+		// Server is still on so number still retains its original value
+		// check if number has reached End. Or it has handled 100 requests
+		if numberStore.Number>=numberStore.End{
+			// update the struct
+			numberStore.Start=numberStore.Number+1
+			numberStore.Number=numberStore.Start
+			numberStore.End=numberStore.Start+numberStore.Step
+			_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO numbers (number) VALUES ($1)",numberStore.End)
+			if dbErr1 != nil {
+				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
+				return	
+			}
+			
+		}else{
+
+			// number has n0t handled 100 requests yet. So just keep increasing it
+			numberStore.Number+=1
 		}
-		utils.JsonResponse(w, false, http.StatusBadRequest , dbErr.Error(), nil)
-		return
+		
 	}
-	utils.JsonResponse(w, true, http.StatusOK ,"success", map[string]interface{}{
+	// since number is gotten. Convert to base62 to get slug and store as new url.
+	userId := r.Context().Value("user")
+	newShortUrl:= utils.ShortAccess(numberStore.Number, url_length)
+	_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (user_id, original_url, short_url) VALUES ($1, $2, $3)",userId, url.Url, newShortUrl)
+	if dbErr1 != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
+		return
+		
+	}
+	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
 		"origin":url.Url,
-		"slug":shortUrl,
-		"url": baseUrl+"/"+shortUrl,
+		"slug":newShortUrl,
+		"url": baseUrl+"/"+newShortUrl,
 	})
 	return
 }
-
 
 func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	dbPool, connErr := db.Connect()
