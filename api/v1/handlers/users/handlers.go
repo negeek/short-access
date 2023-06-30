@@ -41,6 +41,18 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , jsErr.Error(), nil)
 		return	
 	}
+	
+	// check if email exists. Tell user to input another email
+	var emailExists bool
+	emailErr:=dbPool.QueryRow(context.Background(),  "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", newUser.Email).Scan(&emailExists)
+	if emailErr != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest , emailErr.Error(), nil)
+		return	
+	}
+	if emailExists==true{
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Email already exist", nil)
+		return
+	}
 
 	// Insert the new user into the database
 	_, dbErr := dbPool.Exec(context.Background(), "INSERT INTO users (id, password, email) VALUES ($1, $2, $3)",newUserId, newUser.Password, newUser.Email)
