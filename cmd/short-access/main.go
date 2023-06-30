@@ -28,6 +28,7 @@ func main(){
 
 	user_mgt := router.PathPrefix("/api/v1/user_mgt").Subrouter()
 	user_mgt.HandleFunc("/join/", users.SignUp).Methods("POST")
+	user_mgt.HandleFunc("/new_token/", users.NewToken).Methods("POST")
 
 	url_mgt:=router.PathPrefix("/api/v1/url").Subrouter()
 	url_mgt.Use(middlewares.AuthenticationMiddleware)
