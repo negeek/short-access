@@ -107,7 +107,7 @@ func NewToken(w http.ResponseWriter, r *http.Request){
 
 	dbErr := dbPool.QueryRow(context.Background(), "select id from users where email=$1", emailBody.Email).Scan(&userId)
 	if dbErr != nil{
-		utils.JsonResponse(w, false, http.StatusBadRequest , dbErr.Error(), nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something Went Wrong. Make sure Email used to signUp is what is provided", nil)
 		return
 	}
 
