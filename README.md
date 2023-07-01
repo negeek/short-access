@@ -9,12 +9,22 @@ Short-Access is a free and powerful URL Shortener built with Golang.
 
 ###### example response: 
 
-`{"data":{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InBhdHJpY2tAZ21haWwuY29tIiwiaWQiOiI5MWEyMWU3NS0yMWU5LTQwYzAtOTk3MS0yNTBiN2UwMzE4NDEifQ.nhIQKPJrgsGbWQqCdSGzwrkQUgzSmeLhJ3XXgsn1xJI","email":"patrick@gmail.com"},"success":true}`
+`{"success":true,"message":"Successfully Joined","data":{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY","email":"patrick@gmail.com"}}`
 
 ##### To shorten your URL: 
 
-`curl -X POST 'http://localhost:8080/api/v1/url/shorten/' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InBhdHJpY2tAZ21haWwuY29tIiwiaWQiOiI5MWEyMWU3NS0yMWU5LTQwYzAtOTk3MS0yNTBiN2UwMzE4NDEifQ.nhIQKPJrgsGbWQqCdSGzwrkQUgzSmeLhJ3XXgsn1xJI' -d '{"url":"https://pkg.go.dev/net/http#pkg-constants"}'`
+`curl -X POST 'http://localhost:8080/api/v1/url/shorten/' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY' -d '{"url":"https://pkg.go.dev/net/http#pkg-constants"}'`
 
 ###### example response: 
 
-`{"data":{"origin":"https://pkg.go.dev/net/http#pkg-constants","slug":"000000002","url":"http://localhost:8080/000000002"},"success":true}`
+`{"success":true,"message":"Successfully shortened url","data":{"origin":"https://pkg.go.dev/net/http#pkg-constants","slug":"00000001u","url":"http://localhost:8080/00000001u"}}`
+
+
+##### To get back access token:
+`curl -X POST 'http://localhost:8080/api/v1/user_mgt/new_token/' -H 'Content-Type: application/json' -d'{"email":"patrick@gmail.com"}'`
+
+###### example response:
+`{"success":true,"message":"Token created Successfully","data":{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY","email":"dlion@gmail.com"}}`
+
+
+
