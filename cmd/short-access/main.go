@@ -7,9 +7,13 @@ import (
 	"time"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/negeek/short-access/api/v1/handlers/users"
 	"github.com/negeek/short-access/middlewares/v1"
 	"github.com/negeek/short-access/api/v1/handlers/urls"
+	"github.com/negeek/short-access/routes-version/v1"
+	"os"
+    "os/signal"
+	"context"
+	"syscall"
 		)
 
 
@@ -25,14 +29,7 @@ func main(){
 	router := mux.NewRouter()
 	router.Use(middlewares.CORS)
 	router.HandleFunc("/{slug}", urls.UrlRedirect).Methods("GET")
-
-	user_mgt := router.PathPrefix("/api/v1/user_mgt").Subrouter()
-	user_mgt.HandleFunc("/join/", users.SignUp).Methods("POST")
-	user_mgt.HandleFunc("/new_token/", users.NewToken).Methods("POST")
-
-	url_mgt:=router.PathPrefix("/api/v1/url").Subrouter()
-	url_mgt.Use(middlewares.AuthenticationMiddleware)
-	url_mgt.HandleFunc("/shorten/", urls.Shorten).Methods("POST")
+	v1.V1routes(router.StrictSlash(true))
 
 	
 	//custom server
@@ -41,12 +38,33 @@ func main(){
 		Handler: router,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
+		IdleTimeout:  60 *  time.Second,
 	}
-	// start server
-	fmt.Println("server start")
-	serverErr:=server.ListenAndServe()
-	if serverErr != nil {
-		fmt.Printf("error listening for server: %s\n", serverErr)
-	}
+
+	// Run server in a goroutine so that it doesn't block.
+	go func() {
+		fmt.Println("server start")
+		if err := server.ListenAndServe(); err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	// accept graceful shutdowns when quit via SIGINT (Ctrl+C)
+	// SIGKILL will not be caught.
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	// Block until we receive our signal.
+	<-c
+
+	// Create a deadline to wait for.
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	// Doesn't block if no connections, but will otherwise wait
+	// until the timeout deadline.
+	server.Shutdown(ctx)
+
+	fmt.Println("shutting down")
+	os.Exit(0)
 
 }
