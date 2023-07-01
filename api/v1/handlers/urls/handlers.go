@@ -48,58 +48,73 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , jsErr.Error(), nil)
 		return
 	}
+
 	// Handle 100 requests at once
-	if numberStore.Number==0{
-		// Probably server just started or it was shutdown and started again
-		// get latest number
+
+	if numberStore.Number == 0{
+		// probably server just started or it was shutdown and re-started.
+		// so i need to do something like check if number row exists. If it does get the number and update by numberStore.Step
 		var num int
-		dbErr:=dbPool.QueryRow(context.Background(),  "select coalesce(max(number), 0) FROM numbers").Scan(&num)
+		dbErr:=dbPool.QueryRow(context.Background(), "select number from numbers LIMIT 1").Scan(&num)
 		if dbErr != nil {
-			utils.JsonResponse(w, false, http.StatusBadRequest, dbErr.Error(), nil)
-			return
-		}
-		// update the struct
-		numberStore.Start=num+1
-		numberStore.Number=numberStore.Start
-		numberStore.End=numberStore.Start+numberStore.Step
-		
-		// Insert the End number in numbers table in db
-		_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO numbers (number) VALUES ($1)",numberStore.End)
-			if dbErr1 != nil {
-				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
+			if dbErr.Error() == "no rows in result set"{
+				// this means server just got started for the very first time.
+				// so just create a new row.
+				_,dbErr:=dbPool.Exec(context.Background(), "INSERT INTO numbers (number) VALUES ($1)",numberStore.End)
+				if dbErr != nil{
+					utils.JsonResponse(w, false, http.StatusBadRequest, dbErr.Error(), nil)
+					return
+				}
+				// start with number 1.
+				numberStore.Number+=1
+
+			}else{
+				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr.Error(), nil)
 				return
-				
 			}
-			
-	}else{
-		// Server is still on so number still retains its original value
-		// check if number has reached End. Or it has handled 100 requests
-		if numberStore.Number>=numberStore.End{
-			// update the struct
-			numberStore.Start=numberStore.Number+1
+	
+		}else{
+			// seems server was shutdown and re-started. Increment num in db by numberStore.Step
+			numberStore.Start=num+1
 			numberStore.Number=numberStore.Start
 			numberStore.End=numberStore.Start+numberStore.Step
-			_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO numbers (number) VALUES ($1)",numberStore.End)
+
+			// update the row in the db since it is only 1 row that will ever exist.
+			_,dbErr1:= dbPool.Exec(context.Background(), "UPDATE numbers SET number = $1",numberStore.End)
 			if dbErr1 != nil {
 				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
 				return	
 			}
-			
-		}else{
 
-			// number has n0t handled 100 requests yet. So just keep increasing it
+		}
+
+	}else{
+		if numberStore.Number>=numberStore.End{
+			// 100 numbers have been used up
+			numberStore.Start=numberStore.Number+1
+			numberStore.Number=numberStore.Start
+			numberStore.End=numberStore.Start+numberStore.Step
+
+			// update the row in the db since it is only 1 row that will ever exist.
+			_,dbErr2 := dbPool.Exec(context.Background(), "UPDATE numbers SET number = $1",numberStore.End)
+			if dbErr2 != nil {
+				utils.JsonResponse(w, false, http.StatusBadRequest, dbErr2.Error(), nil)
+				return	
+			}
+
+		}else{
+			// just increment number
 			numberStore.Number+=1
 		}
-		
 	}
-	// since number is gotten. Convert to base62 to get slug and store as new url.
+	
+	//since number is gotten. Convert to base62 to get slug and store as new url.
 	userId := r.Context().Value("user")
 	newShortUrl:= utils.ShortAccess(numberStore.Number, url_length)
-	_, dbErr1 := dbPool.Exec(context.Background(), "INSERT INTO urls (user_id, original_url, short_url) VALUES ($1, $2, $3)",userId, url.Url, newShortUrl)
-	if dbErr1 != nil {
-		utils.JsonResponse(w, false, http.StatusBadRequest, dbErr1.Error(), nil)
-		return
-		
+	_, dbErr3 := dbPool.Exec(context.Background(), "INSERT INTO urls (user_id, original_url, short_url) VALUES ($1, $2, $3)",userId, url.Url, newShortUrl)
+	if dbErr3 != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest, dbErr3.Error(), nil)
+		return	
 	}
 	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
 		"origin":url.Url,
