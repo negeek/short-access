@@ -7,9 +7,10 @@ import (
 	"time"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/negeek/short-access/middlewares/v1"
+	v1middlewares "github.com/negeek/short-access/middlewares/v1"
 	"github.com/negeek/short-access/api/v1/handlers/urls"
-	"github.com/negeek/short-access/routes-version/v1"
+	routes "github.com/negeek/short-access/routes-version/v1"
+	"github.com/negeek/short-access/db"
 	"os"
     "os/signal"
 	"context"
@@ -19,17 +20,26 @@ import (
 
 func main(){
 
-	envErr := godotenv.Load("../../internal/env/.env")
+	err := godotenv.Load("../../internal/env/.env")
 	
-    if envErr != nil {
-        log.Fatalf("Error loading .env file: %s", envErr)
+    if err != nil {
+        log.Fatal("Error loading .env file")
     }
 	
 	//custom servermutiplexer
 	router := mux.NewRouter()
-	router.Use(middlewares.CORS)
+	router.Use(v1middlewares.CORS)
 	router.HandleFunc("/{slug}", urls.UrlRedirect).Methods("GET")
-	v1.V1routes(router.StrictSlash(true))
+	routes.V1routes(router.StrictSlash(true))
+
+	// DB connection
+	dbURL := os.Getenv("DATABASE_URL")
+    if dbURL == "" {
+        log.Fatal("DATABASE_URL not set")
+    }
+	if err = db.Connect(dbURL); err != nil {
+		log.Fatal(err)
+	}
 
 	
 	//custom server
@@ -44,7 +54,7 @@ func main(){
 	// Run server in a goroutine so that it doesn't block.
 	go func() {
 		fmt.Println("server start")
-		if err := server.ListenAndServe(); err != nil {
+		if err = server.ListenAndServe(); err != nil {
 			fmt.Println(err)
 		}
 	}()

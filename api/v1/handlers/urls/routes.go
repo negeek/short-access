@@ -2,12 +2,12 @@ package urls
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/negeek/short-access/middlewares/v1"
+	v1middlewares "github.com/negeek/short-access/middlewares/v1"
 
 )
 
-func UrlRoutes(r *mux.Router) {
+func Routes(r *mux.Router) {
 	router := r.PathPrefix("/url").Subrouter()
-	router.Use(middlewares.AuthenticationMiddleware)
+	router.Use(v1middlewares.AuthenticationMiddleware)
 	router.HandleFunc("/shorten/", Shorten).Methods("POST")
 }

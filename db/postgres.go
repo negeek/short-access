@@ -2,24 +2,22 @@ package db
 
 import (
     "context"
-    "log"
-    "os"
-
     "github.com/jackc/pgx/v4/pgxpool"
 )
 
-func Connect() (*pgxpool.Pool, error) {
+var PostgreSQLDB *pgxpool.Pool
+func Connect(url string) error{
     // Get the database URL from environment variable
-    dbURL := os.Getenv("DATABASE_URL")
-    if dbURL == "" {
-        log.Fatalf("DATABASE_URL not set")
-    }
+    config, err := pgxpool.ParseConfig(url)
+	if err != nil {
+		return err
+	}
 
     // Create a new database connection pool
-    dbPool, err := pgxpool.Connect(context.Background(), dbURL)
+    PostgreSQLDB, err = pgxpool.ConnectConfig(context.Background(), config)
     if err != nil {
-        return nil, err
+        return  err
     }
 
-    return dbPool, nil
+    return nil
 }

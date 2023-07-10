@@ -9,7 +9,7 @@ import (
 
 func V1routes(r *mux.Router) {
 	router := r.PathPrefix("/api/v1").Subrouter()
-	users.UserRoutes(router)
-	urls.UrlRoutes(router)
+	users.Routes(router)
+	urls.Routes(router)
 	
 }
