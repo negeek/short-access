@@ -9,7 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	v1middlewares "github.com/negeek/short-access/middlewares/v1"
 	"github.com/negeek/short-access/api/v1/handlers/urls"
-	routes "github.com/negeek/short-access/routes-version/v1"
+	routes "github.com/negeek/short-access/routes/v1"
 	"github.com/negeek/short-access/db"
 	"os"
     "os/signal"
