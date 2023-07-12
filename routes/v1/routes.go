@@ -2,8 +2,8 @@ package v1
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/negeek/short-access/api/v1/handlers/urls"
-	"github.com/negeek/short-access/api/v1/handlers/users"
+	"github.com/negeek/short-access/api/v1/urls"
+	"github.com/negeek/short-access/api/v1/users"
 
 )
 
