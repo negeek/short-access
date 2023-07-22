@@ -19,8 +19,8 @@ func (u *Url) Create() error {
 }
 
 func (u *Url) FindByOriginalUrl()(error,bool){
-	query:="SELECT user_id, short_url FROM urls WHERE original_url=$1"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.Url).Scan(&u.UserId,&u.ShortUrl)
+	query:="SELECT short_url FROM urls WHERE original_url=$1 and user_id=$2"
+	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.Url, u.UserId).Scan(&u.ShortUrl)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, false

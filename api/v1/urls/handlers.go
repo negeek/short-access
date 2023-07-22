@@ -1,7 +1,7 @@
 package urls 
 
 import (
-	//"fmt"
+	"fmt"
 	"net/http"
 	"io/ioutil"
 	"os"
@@ -39,6 +39,13 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	userId, ok := r.Context().Value("user").(uuid.UUID)
+	if !ok {
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		return
+	}
+	fmt.Println(userId)
+	newUrl.UserId =userId
 	_,exist:=newUrl.FindByOriginalUrl()
 	if exist == true{
 		utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
@@ -88,12 +95,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 			numberStore.Number+=1
 		}
 	}
-	userId, ok := r.Context().Value("user").(uuid.UUID)
-	if !ok {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
-		return
-	}
-	newUrl.UserId= userId
+
 	newUrl.ShortUrl=utils.ShortAccess(numberStore.Number, url_length)
 	err=newUrl.Create()
 	if err != nil {

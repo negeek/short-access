@@ -21,13 +21,12 @@ func SignUp(w http.ResponseWriter, r *http.Request){
 	// create user
 	var newUser user.User
 	err=json.Unmarshal([]byte(body),&newUser)
-	newUser.Id=uuid.New()
-
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return	
 	}
 	
+	newUser.Id=uuid.New()
 	// check if email exists. Tell user to input another email
 	emailExists:=newUser.EmailExists()
 	if emailExists==true{
