@@ -24,7 +24,7 @@ func TestSignUp(t *testing.T){
     if status := rr.Code; status != http.StatusCreated {
         t.Errorf("handler returned wrong status code: got %v want %v",
             status, http.StatusCreated)
-		return
+	
     }
 
 	//clean Up
@@ -55,7 +55,6 @@ func TestNewToken(t *testing.T){
     if status := rr.Code; status != http.StatusCreated {
         t.Errorf("handler returned wrong status code: got %v want %v",
             status, http.StatusCreated)
-		return
     }
 
 	// now get new token
@@ -75,13 +74,15 @@ func TestNewToken(t *testing.T){
     }
 
 	//clean Up
-	fmt.Println("cleaning up.....")
-	var newUser user.User
-	err=json.Unmarshal([]byte(jsonBody),&newUser)
-	if err != nil {
-        t.Fatal(err)
-    }
-	newUser.Delete()
-	fmt.Println("cleaning done")
+	defer func(){
+		fmt.Println("cleaning up.....")
+		var newUser user.User
+		err=json.Unmarshal([]byte(jsonBody),&newUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newUser.Delete()
+		fmt.Println("cleaning done")
+	}()
 
 }

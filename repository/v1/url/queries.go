@@ -41,3 +41,23 @@ func (u *Url) FindByShortUrl()(error,bool){
 	}
 	return nil, true
 }
+
+func (u *Url) Delete() error {
+	if u.ShortUrl!=""{
+		query:="DELETE FROM urls WHERE short_url=$1"
+		_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.ShortUrl)
+		if err != nil {
+			return err
+		}
+		
+	}else{
+		// this will delete every instance of the url which will affect other users, so this is for test only
+		query:="DELETE FROM urls WHERE original_url=$1"
+		_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.Url)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+	
+}
