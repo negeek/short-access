@@ -1,7 +1,7 @@
 package urls 
 
 import (
-	"fmt"
+	//"fmt"
 	"net/http"
 	"io/ioutil"
 	"os"
@@ -44,7 +44,6 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
 		return
 	}
-	fmt.Println(userId)
 	newUrl.UserId =userId
 	_,exist:=newUrl.FindByOriginalUrl()
 	if exist == true{
