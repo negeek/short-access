@@ -19,13 +19,17 @@ import (
 
 
 func main(){
-
-	err := godotenv.Load("../../internal/env/.env")
-	
-    if err != nil {
-        log.Fatal("Error loading .env file")
-    }
-	
+	appEnv:=os.Getenv("APP_ENV")
+	if appEnv=="dev"{
+		err := godotenv.Load(".env")
+		if err != nil {
+			// try this directory
+			err = godotenv.Load("../../internal/env/.env")
+			if err != nil {
+				log.Fatal("Error loading .env file")
+			}
+		}
+	}
 	//custom servermutiplexer
 	router := mux.NewRouter()
 	router.Use(v1middlewares.CORS)
@@ -33,11 +37,15 @@ func main(){
 	routes.V1routes(router.StrictSlash(true))
 
 	// DB connection
-	dbURL := os.Getenv("DATABASE_URL")
-    if dbURL == "" {
-        log.Fatal("DATABASE_URL not set")
-    }
-	if err = db.Connect(dbURL); err != nil {
+	dbURL := fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s",
+        os.Getenv("POSTGRES_USER"),
+        os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_DB"))
+	fmt.Println("connecting to db: ",dbURL)
+	if err:= db.Connect(dbURL); err != nil {
 		log.Fatal(err)
 	}
 
@@ -54,7 +62,7 @@ func main(){
 	// Run server in a goroutine so that it doesn't block.
 	go func() {
 		fmt.Println("server start")
-		if err = server.ListenAndServe(); err != nil {
+		if err:= server.ListenAndServe(); err != nil {
 			fmt.Println(err)
 		}
 	}()
