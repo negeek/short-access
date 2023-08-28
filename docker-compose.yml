@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14-alpine
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=sadb
+      - POSTGRES_USER=sauser
+      - POSTGRES_PASSWORD=sapass
+    container_name: sadb_server
+  
+  app:
+    image: golang:1.18-alpine
+    build: ./
+    command: ./main
+    ports:
+      - "8080:8080"
+    container_name: sa_server
+    depends_on:
+      - db
+    
+    
+
+  
+
+

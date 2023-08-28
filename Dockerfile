@@ -1,8 +1,12 @@
 # syntax=docker/dockerfile:1
 
 FROM golang:1.18-alpine
+# install golabg-migrate
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 ENV CGO_ENABLED=0
-ENV APP_ENV="dev"
+#ENV APP_ENV="dev"
+
 # Set destination for COPY
 WORKDIR /app
 
