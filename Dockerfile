@@ -10,7 +10,7 @@ ENV CGO_ENABLED=0
 # Set destination for COPY
 WORKDIR /app
 
-COPY internal/env/.env ./
+#COPY internal/env/.env ./
 
 COPY . ./
 
