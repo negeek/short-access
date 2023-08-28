@@ -9,6 +9,7 @@ import (
 	"github.com/joho/godotenv"
 	v1middlewares "github.com/negeek/short-access/middlewares/v1"
 	"github.com/negeek/short-access/api/v1/urls"
+	"github.com/negeek/short-access/api"
 	routes "github.com/negeek/short-access/routes/v1"
 	"github.com/negeek/short-access/db"
 	"os"
@@ -23,16 +24,13 @@ func main(){
 	if appEnv=="dev"{
 		err := godotenv.Load(".env")
 		if err != nil {
-			// try this directory
-			err = godotenv.Load("../../internal/env/.env")
-			if err != nil {
-				log.Fatal("Error loading .env file")
-			}
+			log.Fatal("Error loading .env file")
 		}
 	}
 	//custom servermutiplexer
 	router := mux.NewRouter()
 	router.Use(v1middlewares.CORS)
+	router.HandleFunc("/", api.Home).Methods("GET")
 	router.HandleFunc("/{slug}", urls.UrlRedirect).Methods("GET")
 	routes.V1routes(router.StrictSlash(true))
 
