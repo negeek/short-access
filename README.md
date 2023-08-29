@@ -17,7 +17,7 @@ Short-Access is a free and powerful URL Shortener built with Golang.
 
 ###### example response: 
 
-`{"success":true,"message":"Successfully shortened url","data":{"origin":"https://pkg.go.dev/net/http#pkg-constants","slug":"00000001u","url":"http://localhost:8080/00000001u"}}`
+`{"success":true,"message":"Successfully shortened url","data":{"origin":"https://pkg.go.dev/net/http#pkg-constants","slug":"00000001u","url":"https://shrt-acc.onrender.com/00000001u"}}`
 
 
 #### To get back access token:
