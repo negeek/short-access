@@ -109,13 +109,56 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 	return
 }
 
+func CustomUrl(w http.ResponseWriter, r *http.Request){
+	baseUrl:=os.Getenv("BASE_URL")
+	body, err:= ioutil.ReadAll(r.Body)
+	if err != nil{
+		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+		return
+	}
+	userId, ok := r.Context().Value("user").(uuid.UUID)
+	if !ok {
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		return
+	}
+	newUrl.UserId =userId
+	// check if long url exists before
+	_,exist:=newUrl.FindByOriginalUrl()
+	if exist == true{
+		utils.JsonResponse(w, true, http.StatusBadRequest ,"You have shortened this url before", map[string]interface{}{
+			"origin":newUrl.Url,
+			"slug":newUrl.ShortUrl,
+			"url": baseUrl+"/"+newUrl.ShortUrl,
+		})
+		return
+	}
+	// check if short url exists before
+	_,exist:=newUrl.FindByShortUrl()
+	if exist == true{
+		utils.JsonResponse(w, true, http.StatusBadRequest ,"Url provided exists already", nil)
+		return
+	}
+	// now store new url
+	err=newUrl.Create()
+	if err != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		return
+	}
+	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully created custom url", map[string]interface{}{
+		"origin":newUrl.Url,
+		"slug":newUrl.ShortUrl,
+		"url": baseUrl+"/"+newUrl.ShortUrl,
+	})
+	return
+}
+
 func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	var oldUrl =&url.Url{}
 	// get the original url
 	oldUrl.ShortUrl = mux.Vars(r)["slug"]
 	_,exist:=oldUrl.FindByShortUrl()
 	if exist != true{
-		utils.JsonResponse(w, false, http.StatusBadRequest,"Something Went wrong. Make sure is Valid or Shorten again" , nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest,"Something Went wrong. Make sure url is valid." , nil)
 		return
 	}
 	http.Redirect(w, r, oldUrl.Url, http.StatusTemporaryRedirect)
