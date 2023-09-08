@@ -10,8 +10,8 @@ import(
 
 func (u *Url) Create() error {
 	utils.Time(u,true)
-	query:="INSERT INTO urls (user_id, original_url, short_url, date_created, date_updated) VALUES ($1, $2, $3, $4, $5)"
-	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.UserId, u.Url, u.ShortUrl, u.DateCreated, u.DateUpdated)
+	query:="INSERT INTO urls (user_id, original_url, short_url, is_custom, date_created, date_updated) VALUES ($1, $2, $3, $4, $5, $6)"
+	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.UserId, u.Url, u.ShortUrl, u.IsCustom, u.DateCreated, u.DateUpdated)
 	if err != nil {
 		return err
 	}

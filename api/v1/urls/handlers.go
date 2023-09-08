@@ -116,6 +116,13 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
 	}
+	var newUrl url.Url
+	err=json.Unmarshal([]byte(body),&newUrl)
+	if err != nil{
+		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+		return
+	}
+
 	userId, ok := r.Context().Value("user").(uuid.UUID)
 	if !ok {
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
@@ -123,15 +130,15 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 	}
 	newUrl.UserId =userId
 	// check if long url exists before
-	_,exist:=newUrl.FindByOriginalUrl()
-	if exist == true{
-		utils.JsonResponse(w, true, http.StatusBadRequest ,"You have shortened this url before", map[string]interface{}{
-			"origin":newUrl.Url,
-			"slug":newUrl.ShortUrl,
-			"url": baseUrl+"/"+newUrl.ShortUrl,
-		})
-		return
-	}
+	// _,exist:=newUrl.FindByOriginalUrl()
+	// if exist == true{
+	// 	utils.JsonResponse(w, true, http.StatusBadRequest ,"You have shortened this url before", map[string]interface{}{
+	// 		"origin":newUrl.Url,
+	// 		"slug":newUrl.ShortUrl,
+	// 		"url": baseUrl+"/"+newUrl.ShortUrl,
+	// 	})
+	// 	return
+	// }
 	// check if short url exists before
 	_,exist:=newUrl.FindByShortUrl()
 	if exist == true{
@@ -139,6 +146,7 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	// now store new url
+	newUrl.IsCustom=true
 	err=newUrl.Create()
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
