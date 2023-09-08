@@ -73,10 +73,10 @@ func NewToken(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	// validate if email exist in db and get the user_id to create token.
-	_,exist:= oldUser.FindByEmail()
+	// validate if email and password is correct.
+	_,exist:= oldUser.Authenticate()
 	if exist != true{
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something Went Wrong. Make sure Email used to signUp is what is provided", nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something Went Wrong. Check your email and password.", nil)
 		return
 	}
 

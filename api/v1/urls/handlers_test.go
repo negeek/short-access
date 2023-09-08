@@ -88,3 +88,78 @@ func TestShorten(t *testing.T){
 		fmt.Println("cleaning done")
 	}()
 }
+
+func TestCustomUrl(t *testing.T){
+	test.Setup()
+	//create user first
+	jsonBody := `{"email":"delet@yahoo.com","password":"dlionking77"}`
+ 	bodyReader := bytes.NewReader([]byte(jsonBody))
+	req, err := http.NewRequest("POST","/join/",bodyReader)
+	if err != nil {
+        t.Fatal(err)
+    }
+	rr := httptest.NewRecorder()
+    handler := http.HandlerFunc(users.SignUp)
+	handler.ServeHTTP(rr, req)
+    // Check the status code is what we expect.
+    if status := rr.Code; status != http.StatusCreated {
+        t.Errorf("handler returned wrong status code: got %v want %v",
+            status, http.StatusCreated)
+		
+    }
+
+	var resp=test.Response{}
+	err=json.Unmarshal([]byte(rr.Body.String()),&resp)
+	if err != nil {
+        t.Fatal(err)
+    }
+	// resp.Data is of type interface{} and contains the data
+	data, ok := resp.Data.(map[string]interface{})
+	if !ok {
+		fmt.Println("Data is not of type map[string]interface{}")
+		
+	}
+
+	token, ok := data["access_token"].(string)
+	if !ok {
+		fmt.Println("token not found or not of type string.")
+		
+	}
+
+	//shorten
+	jsonBody2 := `{"url":"https://www.test.com/test","short_url":"test"}`
+ 	bodyReader = bytes.NewReader([]byte(jsonBody2))
+	req, err = http.NewRequest("POST","/custom/",bodyReader)
+	if err != nil {
+        t.Fatal(err)
+    }
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	rr = httptest.NewRecorder()
+    handler2 := v1middlewares.AuthenticationMiddleware(http.HandlerFunc(CustomUrl))
+	handler2.ServeHTTP(rr, req)
+    // Check the status code is what we expect.
+    if status := rr.Code; status != http.StatusCreated {
+        t.Errorf("handler returned wrong status code: got %v want %v",
+            status, http.StatusCreated)		
+    }
+
+	//clean Up
+	defer func(){
+		fmt.Println("cleaning up.....")
+		var newUser user.User
+		err=json.Unmarshal([]byte(jsonBody),&newUser)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newUser.Delete()
+
+		var newUrl url.Url
+		err=json.Unmarshal([]byte(jsonBody2),&newUrl)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newUrl.Delete()
+		fmt.Println("cleaning done")
+	}()
+}

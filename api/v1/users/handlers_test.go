@@ -58,7 +58,6 @@ func TestNewToken(t *testing.T){
     }
 
 	// now get new token
-	jsonBody = `{"url":"delete@yahoo.com"}`
  	bodyReader = bytes.NewReader([]byte(jsonBody))
 	req, err = http.NewRequest("POST","/new_token/",bodyReader)
 	if err != nil {

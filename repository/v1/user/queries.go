@@ -48,6 +48,18 @@ func (u *User) FindByEmail() (error, bool) {
 	return nil, true
 }
 
+func (u *User) Authenticate() (error, bool) {
+	query:="SELECT id, email, date_created, date_updated FROM users WHERE email = $1 and password = $2"
+	err := db.PostgreSQLDB.QueryRow(context.Background(),query,u.Email,u.Password).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, false
+		}
+		return err,false
+	}
+	return nil, true
+}
+
 func (u *User) Delete() error {
 	query:="DELETE FROM users WHERE email = $1"
 	_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.Email)
