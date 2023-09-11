@@ -10,7 +10,7 @@ type Response struct {
 	Data    interface{} `json:"data"`
 }
 // sends json response
-func JsonResponse(w http.ResponseWriter, success bool, statusCode int, message string, data map[string]interface{}) {
+func JsonResponse(w http.ResponseWriter, success bool, statusCode int, message string, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 
 	w.WriteHeader(statusCode)

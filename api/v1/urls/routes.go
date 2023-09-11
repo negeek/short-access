@@ -11,4 +11,5 @@ func Routes(r *mux.Router) {
 	router.Use(v1middlewares.AuthenticationMiddleware)
 	router.HandleFunc("/shorten/", Shorten).Methods("POST")
 	router.HandleFunc("/custom/", CustomUrl).Methods("POST")
+	router.HandleFunc("/urls/", UserUrls).Methods("GET")
 }

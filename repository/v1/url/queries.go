@@ -42,6 +42,25 @@ func (u *Url) FindByShortUrl()(error,bool){
 	return nil, true
 }
 
+func (u *Url) UserUrls()([]Url,error){
+	query:="SELECT id, original_url,short_url,is_custom,date_created, date_updated FROM urls WHERE user_id=$1"
+	rows,err:=db.PostgreSQLDB.Query(context.Background(), query, u.UserId)
+	if err != nil {
+		return nil,err
+	}
+	defer rows.Close()
+	var userUrls []Url
+	for rows.Next() {
+		var url Url
+		err := rows.Scan(&url.Id, &url.Url, &url.ShortUrl, &url.IsCustom, &url.DateCreated, &url.DateUpdated)
+		if err != nil {
+			return nil, err
+		}
+		userUrls = append(userUrls, url)
+	}
+	return userUrls,nil
+}
+
 func (u *Url) Delete() error {
 	if u.ShortUrl!=""{
 		query:="DELETE FROM urls WHERE short_url=$1"

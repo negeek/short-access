@@ -160,6 +160,25 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 	return
 }
 
+func UserUrls(w http.ResponseWriter, r *http.Request){
+	userId, ok := r.Context().Value("user").(uuid.UUID)
+	if !ok {
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		return
+	}
+	var url url.Url
+	url.UserId =userId
+	userUrls,err:=url.UserUrls()
+	if err != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		return
+	}
+	utils.JsonResponse(w, true, http.StatusOK ,"", userUrls)
+	return
+
+}
+
+
 func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	var oldUrl =&url.Url{}
 	// get the original url

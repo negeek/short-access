@@ -39,9 +39,9 @@ func TestShorten(t *testing.T){
         t.Fatal(err)
     }
 	// resp.Data is of type interface{} and contains the data
-	data, ok := resp.Data.(map[string]interface{})
+	data, ok := resp.Data.(interface{})
 	if !ok {
-		fmt.Println("Data is not of type map[string]interface{}")
+		fmt.Println("Data is not of type interface{}")
 		
 	}
 
@@ -114,9 +114,9 @@ func TestCustomUrl(t *testing.T){
         t.Fatal(err)
     }
 	// resp.Data is of type interface{} and contains the data
-	data, ok := resp.Data.(map[string]interface{})
+	data, ok := resp.Data.(interface{})
 	if !ok {
-		fmt.Println("Data is not of type map[string]interface{}")
+		fmt.Println("Data is not of type interface{}")
 		
 	}
 
