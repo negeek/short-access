@@ -12,4 +12,5 @@ func Routes(r *mux.Router) {
 	router.HandleFunc("/shorten/", Shorten).Methods("POST")
 	router.HandleFunc("/custom/", CustomUrl).Methods("POST")
 	router.HandleFunc("/urls/", UserUrls).Methods("GET")
+	router.HandleFunc("/urlsf/", UrlFilterHandler).Methods("GET")
 }

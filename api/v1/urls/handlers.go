@@ -175,6 +175,24 @@ func UserUrls(w http.ResponseWriter, r *http.Request){
 
 }
 
+func UrlFilterHandler(w http.ResponseWriter, r *http.Request){
+	userId, ok := r.Context().Value("user").(uuid.UUID)
+	if !ok {
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		return
+	}
+	var urll url.Url
+	urll.UserId =userId
+	queryParams:=r.URL.Query()
+	result,err:=url.UrlFilter(queryParams,urll)
+	if err != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+		return
+	}
+	utils.JsonResponse(w, true, http.StatusOK ,"", result)
+	return
+}
+
 
 func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	var oldUrl =&url.Url{}
