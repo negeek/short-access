@@ -37,7 +37,7 @@ func UrlFilter(queryParams map[string]{}interface, url *Url)([]Url, error){
 	var userUrls []Url
 	for rows.Next() {
 		var url Url
-		err := rows.Scan(&url.Id, &url.Url, &url.ShortUrl, &url.IsCustom, &url.DateCreated, &url.DateUpdated)
+		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl, &url.IsCustom, &url.DateCreated, &url.DateUpdated)
 		if err != nil {
 			return nil, err
 		}

@@ -11,7 +11,7 @@ import(
 func (u *Url) Create() error {
 	utils.Time(u,true)
 	query:="INSERT INTO urls (user_id, original_url, short_url, is_custom, date_created, date_updated) VALUES ($1, $2, $3, $4, $5, $6)"
-	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.UserId, u.Url, u.ShortUrl, u.IsCustom, u.DateCreated, u.DateUpdated)
+	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.UserId, u.OriginalUrl, u.ShortUrl, u.IsCustom, u.DateCreated, u.DateUpdated)
 	if err != nil {
 		return err
 	}
@@ -20,7 +20,7 @@ func (u *Url) Create() error {
 
 func (u *Url) FindByOriginalUrl()(error,bool){
 	query:="SELECT short_url FROM urls WHERE original_url=$1 and user_id=$2"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.Url, u.UserId).Scan(&u.ShortUrl)
+	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.OriginalUrl, u.UserId).Scan(&u.ShortUrl)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, false
@@ -32,7 +32,7 @@ func (u *Url) FindByOriginalUrl()(error,bool){
 
 func (u *Url) FindByShortUrl()(error,bool){
 	query:="SELECT user_id, original_url FROM urls WHERE short_url=$1"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.UserId, &u.Url)
+	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.UserId, &u.OriginalUrl)
 	if err != nil {
 		if err == pgx.ErrNoRows{
 			return nil, false
@@ -52,7 +52,7 @@ func (u *Url) UserUrls()([]Url,error){
 	var userUrls []Url
 	for rows.Next() {
 		var url Url
-		err := rows.Scan(&url.Id, &url.Url, &url.ShortUrl, &url.IsCustom, &url.DateCreated, &url.DateUpdated)
+		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl, &url.IsCustom, &url.DateCreated, &url.DateUpdated)
 		if err != nil {
 			return nil, err
 		}
@@ -72,7 +72,7 @@ func (u *Url) Delete() error {
 	}else{
 		// this will delete every instance of the url which will affect other users, so this is for test only
 		query:="DELETE FROM urls WHERE original_url=$1"
-		_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.Url)
+		_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.OriginalUrl)
 		if err != nil {
 			return err
 		}

@@ -8,7 +8,7 @@ import (
 
 type Url struct {
 	Id        	int   		`json:"id"`	
-	Url  		string      `json:"url"`
+	OriginalUrl  		string      `json:"original_url"`
 	ShortUrl    string      `json:"short_url"`
 	IsCustom    bool      `json:"is_custom"`
 	UserId    	uuid.UUID	`json:"-"`

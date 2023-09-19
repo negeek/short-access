@@ -48,9 +48,8 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 	_,exist:=newUrl.FindByOriginalUrl()
 	if exist == true{
 		utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
-			"origin":newUrl.Url,
-			"slug":newUrl.ShortUrl,
-			"url": baseUrl+"/"+newUrl.ShortUrl,
+			"original_url":newUrl.OriginalUrl,
+			"short_url": baseUrl+"/"+newUrl.ShortUrl,
 		})
 		return
 	}
@@ -102,9 +101,8 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 		return
 	}
 	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
-		"origin":newUrl.Url,
-		"slug":newUrl.ShortUrl,
-		"url": baseUrl+"/"+newUrl.ShortUrl,
+		"original_url":newUrl.OriginalUrl,
+		"short_url": baseUrl+"/"+newUrl.ShortUrl,
 	})
 	return
 }
@@ -153,9 +151,8 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully created custom url", map[string]interface{}{
-		"origin":newUrl.Url,
-		"slug":newUrl.ShortUrl,
-		"url": baseUrl+"/"+newUrl.ShortUrl,
+		"original_url":newUrl.OriginalUrl,
+		"short_url": baseUrl+"/"+newUrl.ShortUrl,
 	})
 	return
 }
@@ -188,6 +185,6 @@ func UrlRedirect( w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest,"Something Went wrong. Make sure url is valid." , nil)
 		return
 	}
-	http.Redirect(w, r, oldUrl.Url, http.StatusTemporaryRedirect)
+	http.Redirect(w, r, oldUrl.OriginalUrl, http.StatusTemporaryRedirect)
 	return
 }

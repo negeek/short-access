@@ -52,7 +52,7 @@ func TestShorten(t *testing.T){
 	}
 
 	//shorten
-	jsonBody2 := `{"url":"https://www.test.com/test"}`
+	jsonBody2 := `{"original_url":"https://www.test.com/test"}`
  	bodyReader = bytes.NewReader([]byte(jsonBody2))
 	req, err = http.NewRequest("POST","/shorten/",bodyReader)
 	if err != nil {
@@ -127,7 +127,7 @@ func TestCustomUrl(t *testing.T){
 	}
 
 	//shorten
-	jsonBody2 := `{"url":"https://www.test.com/test","short_url":"test"}`
+	jsonBody2 := `{"original_url":"https://www.test.com/test","short_url":"test"}`
  	bodyReader = bytes.NewReader([]byte(jsonBody2))
 	req, err = http.NewRequest("POST","/custom/",bodyReader)
 	if err != nil {
