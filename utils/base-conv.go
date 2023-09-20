@@ -1,6 +1,6 @@
 package utils
 import (
-    "fmt"
+    //"fmt"
     "reflect"
     "strconv"
 	"github.com/google/uuid"
@@ -52,12 +52,10 @@ func ConvertToFieldType(value string, structType reflect.Type, key string) (inte
     for i := 0; i < structType.NumField(); i++ {
         field := structType.Field(i)
         jsonTag := field.Tag.Get("json")
-		fmt.Println("tags: ",jsonTag)
         
         // Check if the JSON tag matches the key from the query parameters
         if jsonTag == key {
             fieldType := field.Type
-			fmt.Println("fieldtype: ",fieldType)
 
             // Check the field type and perform the appropriate conversion
             switch fieldType.Kind() {
