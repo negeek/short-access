@@ -3,6 +3,7 @@ import (
     //"fmt"
     "reflect"
     "strconv"
+	"errors"
 	"github.com/google/uuid"
 )
 func ShortAccess(quotient int, resultLength int)string{
@@ -49,6 +50,10 @@ func ShortAccess(quotient int, resultLength int)string{
 }
 
 func ConvertToFieldType(value string, structType reflect.Type, key string) (interface{}, error) {
+	// validate structType is of type struct
+	if structType.Kind()!=reflect.Struct{
+		return nil, errors.New("structType must be a struct")
+	}
     for i := 0; i < structType.NumField(); i++ {
         field := structType.Field(i)
         jsonTag := field.Tag.Get("json")
@@ -88,11 +93,52 @@ func ConvertToFieldType(value string, structType reflect.Type, key string) (inte
 
             default:
                 // If the field type is not supported, return an error
-                return nil, fmt.Errorf("Unsupported field type: %v", fieldType)
+                return nil, errors.New("Unsupported query type")
             }
         }
     }
 
     // If no matching field 
-    return nil, fmt.Errorf("Field with JSON tag %s not found", key)
+    return nil, errors.New("Field not found")
+}
+
+func Filter(queryParams map[string][]string, tableStruct interface{}, tableName string)(string, []interface{}, error){
+	// dynamically filter any database table based on who is trying to access the db table. 
+	// Hence, tableStruct must have UserId field.
+    structType := reflect.TypeOf(tableStruct)
+	if structType.Kind() != reflect.Struct {
+		return "",nil,errors.New("tableStruct must be type struct")
+	}
+	// Access the UserId field
+	idField := reflect.ValueOf(tableStruct).FieldByName("UserId")
+	if !idField.IsValid() || idField.Type() != reflect.TypeOf(uuid.UUID{}) {
+		return "",nil,errors.New("tableStruct must have UserId field and UserId field value must be type uuid.UUID") 
+	}
+	userId := idField.Interface().(uuid.UUID)
+	var queryValues []interface{}
+	queryValues = append(queryValues, userId)
+	// pre-construct query
+	query:="SELECT "
+	for i := 0; i < structType.NumField(); i++ {
+        field := structType.Field(i)
+        jsonTag := field.Tag.Get("json")
+		if jsonTag != "-"{
+			query+=jsonTag+","
+		}
+	}
+	query=query[:len(query)-1]
+	query+=" FROM "+tableName+" WHERE user_id=$1"
+
+	for key, values := range queryParams {
+		// complete query
+		query+=" and "+key+"=$" + strconv.Itoa(len(queryValues)+1)
+		// convert params type to corresponding url table field type.
+		convertedValue, err := ConvertToFieldType(values[0], structType, key)
+		if err != nil {
+			return "", nil,err
+		}
+		queryValues = append(queryValues, convertedValue)
+	}
+	return query, queryValues, nil
+	
 }

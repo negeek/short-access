@@ -127,16 +127,6 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	newUrl.UserId =userId
-	// check if long url exists before
-	// _,exist:=newUrl.FindByOriginalUrl()
-	// if exist == true{
-	// 	utils.JsonResponse(w, true, http.StatusBadRequest ,"You have shortened this url before", map[string]interface{}{
-	// 		"origin":newUrl.Url,
-	// 		"slug":newUrl.ShortUrl,
-	// 		"url": baseUrl+"/"+newUrl.ShortUrl,
-	// 	})
-	// 	return
-	// }
 	// check if short url exists before
 	_,exist:=newUrl.FindByShortUrl()
 	if exist == true{
@@ -157,34 +147,22 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 	return
 }
 
-func UserUrls(w http.ResponseWriter, r *http.Request){
-	userId, ok := r.Context().Value("user").(uuid.UUID)
-	if !ok {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
-		return
-	}
-	var url url.Url
-	url.UserId =userId
-	userUrls,err:=url.UserUrls()
-	if err != nil {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
-		return
-	}
-	utils.JsonResponse(w, true, http.StatusOK ,"", userUrls)
-	return
-
-}
-
-func UrlFilterHandler(w http.ResponseWriter, r *http.Request){
+func UrlFilter(w http.ResponseWriter, r *http.Request){
 	userId, ok := r.Context().Value("user").(uuid.UUID)
 	if !ok {
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
 		return
 	}
 	var urll url.Url
+	var result []url.Url
 	urll.UserId =userId
 	queryParams:=r.URL.Query()
-	result,err:=url.UrlFilter(queryParams,urll)
+	query,queryValues,err:=utils.Filter(queryParams,urll,"urls")
+	if err != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+		return
+	}
+	result,err=urll.UserUrls(query,queryValues)
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
@@ -192,7 +170,6 @@ func UrlFilterHandler(w http.ResponseWriter, r *http.Request){
 	utils.JsonResponse(w, true, http.StatusOK ,"", result)
 	return
 }
-
 
 func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	var oldUrl =&url.Url{}

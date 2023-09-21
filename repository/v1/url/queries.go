@@ -42,9 +42,8 @@ func (u *Url) FindByShortUrl()(error,bool){
 	return nil, true
 }
 
-func (u *Url) UserUrls()([]Url,error){
-	query:="SELECT id, original_url,short_url,is_custom,date_created, date_updated FROM urls WHERE user_id=$1"
-	rows,err:=db.PostgreSQLDB.Query(context.Background(), query, u.UserId)
+func (u *Url) UserUrls(query string, queryValues []interface{})([]Url,error){
+	rows,err:=db.PostgreSQLDB.Query(context.Background(), query, queryValues...)
 	if err != nil {
 		return nil,err
 	}
