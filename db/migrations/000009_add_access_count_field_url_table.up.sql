@@ -1,0 +1,2 @@
+ALTER TABLE urls
+ADD COLUMN access_count INT DEFAULT 0;

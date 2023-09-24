@@ -11,6 +11,7 @@ type Url struct {
 	OriginalUrl  		string      `json:"original_url"`
 	ShortUrl    string      `json:"short_url"`
 	IsCustom    bool      `json:"is_custom"`
+	AccessCount int `json:"access_count"`
 	UserId    	uuid.UUID	`json:"-"`
 	DateCreated time.Time   `json:"date_created"`
 	DateUpdated time.Time   `json:"date_updated"`

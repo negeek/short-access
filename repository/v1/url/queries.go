@@ -10,12 +10,24 @@ import(
 
 func (u *Url) Create() error {
 	utils.Time(u,true)
-	query:="INSERT INTO urls (user_id, original_url, short_url, is_custom, date_created, date_updated) VALUES ($1, $2, $3, $4, $5, $6)"
-	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.UserId, u.OriginalUrl, u.ShortUrl, u.IsCustom, u.DateCreated, u.DateUpdated)
+	query:="INSERT INTO urls (user_id, original_url, short_url, is_custom, access_count, date_created, date_updated) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.UserId, u.OriginalUrl, u.ShortUrl, u.IsCustom, u.AccessCount, u.DateCreated, u.DateUpdated)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (u *Url) UpdateAccessCount() error {
+	utils.Time(u,false)
+	query:="UPDATE urls SET access_count = $1 WHERE user_id=$2 and short_url=$3"
+	_,err := db.PostgreSQLDB.Exec(context.Background(), query, u.AccessCount, u.UserId, u.ShortUrl)
+	if err != nil {
+		return err
+	}
+	return nil
+
+
 }
 
 func (u *Url) FindByOriginalUrl()(error,bool){
@@ -31,8 +43,8 @@ func (u *Url) FindByOriginalUrl()(error,bool){
 }
 
 func (u *Url) FindByShortUrl()(error,bool){
-	query:="SELECT user_id, original_url FROM urls WHERE short_url=$1"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.UserId, &u.OriginalUrl)
+	query:="SELECT user_id, original_url, access_count FROM urls WHERE short_url=$1"
+	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.UserId, &u.OriginalUrl, &u.AccessCount)
 	if err != nil {
 		if err == pgx.ErrNoRows{
 			return nil, false
@@ -51,7 +63,7 @@ func (u *Url) UserUrls(query string, queryValues []interface{})([]Url,error){
 	var userUrls []Url
 	for rows.Next() {
 		var url Url
-		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl, &url.IsCustom, &url.DateCreated, &url.DateUpdated)
+		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl, &url.IsCustom, &url.AccessCount, &url.DateCreated, &url.DateUpdated)
 		if err != nil {
 			return nil, err
 		}

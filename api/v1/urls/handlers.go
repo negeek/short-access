@@ -41,7 +41,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 
 	userId, ok := r.Context().Value("user").(uuid.UUID)
 	if !ok {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
 	newUrl.UserId =userId
@@ -97,7 +97,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 	newUrl.ShortUrl=utils.ShortAccess(numberStore.Number, url_length)
 	err=newUrl.Create()
 	if err != nil {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
 	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
@@ -137,7 +137,7 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 	newUrl.IsCustom=true
 	err=newUrl.Create()
 	if err != nil {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
 	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully created custom url", map[string]interface{}{
@@ -150,7 +150,7 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 func UrlFilter(w http.ResponseWriter, r *http.Request){
 	userId, ok := r.Context().Value("user").(uuid.UUID)
 	if !ok {
-		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
 	var urll url.Url
@@ -173,11 +173,16 @@ func UrlFilter(w http.ResponseWriter, r *http.Request){
 
 func UrlRedirect( w http.ResponseWriter, r *http.Request){
 	var oldUrl =&url.Url{}
-	// get the original url
 	oldUrl.ShortUrl = mux.Vars(r)["slug"]
 	_,exist:=oldUrl.FindByShortUrl()
 	if exist != true{
-		utils.JsonResponse(w, false, http.StatusBadRequest,"Something Went wrong. Make sure url is valid." , nil)
+		utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Make sure url is valid." , nil)
+		return
+	}
+	oldUrl.AccessCount+=1
+	err:=oldUrl.UpdateAccessCount()
+	if err != nil {
+		utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Try again." , nil)
 		return
 	}
 	http.Redirect(w, r, oldUrl.OriginalUrl, http.StatusTemporaryRedirect)
