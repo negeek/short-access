@@ -18,6 +18,10 @@ func (u *Url) Create() error {
 	return nil
 }
 
+func (u *Url) Update() error{
+	// dyanmically update url table
+}
+
 func (u *Url) UpdateAccessCount() error {
 	utils.Time(u,false)
 	query:="UPDATE urls SET access_count = $1 WHERE user_id=$2 and short_url=$3"

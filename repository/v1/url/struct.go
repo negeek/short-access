@@ -13,6 +13,7 @@ type Url struct {
 	IsCustom    bool      `json:"is_custom"`
 	AccessCount int `json:"access_count"`
 	UserId    	uuid.UUID	`json:"-"`
+	ExpireAt    time.Time    `json:"expire_at"`  // added expiryat so that link can expire
 	DateCreated time.Time   `json:"date_created"`
 	DateUpdated time.Time   `json:"date_updated"`
 	User        user.User   `json:"-"`

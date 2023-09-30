@@ -34,3 +34,32 @@ func Time(strct interface{}, new ...bool) error {
 	return nil
 	
 }
+
+func ExpiryDateTime(timeUnit string, timeValue int) (time.Time, error){
+	/*set expiry datetime based on time unit and time value. useful for setting expiry_at for url table.*/
+	start:=time.Now().UTC()
+	var expire_at time.Time
+	switch timeUnit {
+	case "y":
+		expire_at= start.AddDate(timeValue, 0, 0)
+		return expire_at, nil
+	case "mo":
+		expire_at= start.AddDate(0, timeValue, 0)
+		return expire_at, nil
+	case "d":
+		expire_at= start.AddDate(0, 0, timeValue)
+		return expire_at, nil
+	case "h":
+		expire_at= start.Add(time.Duration(timeValue) * time.Hour) 
+		return expire_at, nil
+	case "m":
+		expire_at= start.Add(time.Duration(timeValue) * time.Minute)
+		return expire_at, nil
+	case "s":
+		expire_at= start.Add(time.Duration(timeValue) * time.Second)
+		return expire_at, nil
+	default:
+		return time.Time{}, errors.New("Unsupported time unit. Use any of the following ['y','mo','d','h','m','s']. Which denotes year, month, day, hour, minute, second.")
+	}
+		
+}

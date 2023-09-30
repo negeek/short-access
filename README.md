@@ -1,6 +1,6 @@
 # Short-Access 
 
-Short-Access is a free and powerful URL Shortener built with Golang.
+Short-Access is a free and powerful URL Shortener API built with Golang.
 
 ## How to Use
 #### To sign up:
@@ -35,9 +35,9 @@ Short-Access is a free and powerful URL Shortener built with Golang.
 
 ###### example responses:
 
-`{"success":true,"message":"","data":[{"id":1,"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"000000001","is_custom":false,"date_created":"2023-06-08T10:54:44.044265Z","date_updated":"2023-08-08T10:54:44.044266Z"},{"id":2,"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"negeek","is_custom":true,"date_created":"2023-08-08T10:59:33.817736Z","date_updated":"2023-08-08T10:59:33.817737Z"}]}`
+`{"success":true,"message":"","data":[{"id":1,"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"000000001","is_custom":false,"access_count":0,"date_created":"2023-06-08T10:54:44.044265Z","date_updated":"2023-08-08T10:54:44.044266Z"},{"id":2,"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"negeek","is_custom":true,"access_count":3,"date_created":"2023-08-08T10:59:33.817736Z","date_updated":"2023-08-08T10:59:33.817737Z"}]}`
 
-`{"success":true,"message":"","data":[{"id":2,"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"negeek","is_custom":true,"date_created":"2023-08-08T10:59:33.817736Z","date_updated":"2023-08-08T10:59:33.817737Z"}]}`
+`{"success":true,"message":"","data":[{"id":2,"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"negeek","is_custom":true,"access_count":3,"date_created":"2023-08-08T10:59:33.817736Z","date_updated":"2023-08-08T10:59:33.817737Z"}]}`
 
 
 #### To get back access token:
