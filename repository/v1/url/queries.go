@@ -14,7 +14,8 @@ func (u *Url) Create() error {
 	if err != nil {
 		return err
 	}
-	_,err2 := db.PostgreSQLDB.Exec(context.Background(), query, queryValues...)
+	query+="RETURNING id"
+	err2 := db.PostgreSQLDB.QueryRow(context.Background(), query, queryValues...).Scan(&u.Id)
 	if err2 != nil {
 		return err2
 	}
@@ -52,7 +53,7 @@ func(u *Url) FindById()(error,bool){
 	if err != nil {
 		return err, false
 	}
-	err2:=db.PostgreSQLDB.QueryRow(context.Background(), query,queryValues...).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
+	err2:=db.PostgreSQLDB.QueryRow(context.Background(), query,queryValues...).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl,&u.ShortAccess, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
 	if err2 != nil {
 		if err2 == pgx.ErrNoRows {
 			return nil, false
@@ -63,8 +64,8 @@ func(u *Url) FindById()(error,bool){
 }
 
 func (u *Url) FindByOriginalUrl()(error,bool){
-	query:="SELECT id,original_url,short_url,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE original_url=$1 and user_id=$2"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.OriginalUrl, u.UserId).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
+	query:="SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE original_url=$1 and user_id=$2"
+	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.OriginalUrl, u.UserId).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl,&u.ShortAccess, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, false
@@ -75,8 +76,8 @@ func (u *Url) FindByOriginalUrl()(error,bool){
 }
 
 func (u *Url) FindByShortUrl()(error,bool){
-	query:="SELECT id,original_url,short_url,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE short_url=$1"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
+	query:="SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE short_url=$1"
+	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl,&u.ShortAccess, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
 	if err != nil {
 		if err == pgx.ErrNoRows{
 			return nil, false
@@ -95,7 +96,7 @@ func (u *Url) UserUrls(query string, queryValues []interface{})([]Url,error){
 	var userUrls []Url
 	for rows.Next() {
 		var url Url
-		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl, &url.IsCustom, &url.AccessCount, &url.ExpireAt, &url.DateCreated, &url.DateUpdated)
+		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl,&url.ShortAccess, &url.IsCustom, &url.AccessCount, &url.ExpireAt, &url.DateCreated, &url.DateUpdated)
 		if err != nil {
 			return nil, err
 		}
@@ -125,5 +126,8 @@ func (u *Url) TestDelete() error {
 }
 
 func (u *Url) Expired() bool{
+	if u.ExpireAt.IsZero(){
+		return false
+	}
 	return u.ExpireAt.Before(time.Now().UTC())
 }

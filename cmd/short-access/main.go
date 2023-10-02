@@ -42,7 +42,7 @@ func main(){
 		os.Getenv("POSTGRES_HOST"),
 		os.Getenv("POSTGRES_PORT"),
 		os.Getenv("POSTGRES_DB"))
-	fmt.Println("connecting to db: ",dbURL)
+	fmt.Println("connecting to db")
 	if err:= db.Connect(dbURL); err != nil {
 		log.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func main(){
 
 	// Run server in a goroutine so that it doesn't block.
 	go func() {
-		fmt.Println("server start")
+		fmt.Println("start server")
 		if err:= server.ListenAndServe(); err != nil {
 			fmt.Println(err)
 		}

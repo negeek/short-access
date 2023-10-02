@@ -11,6 +11,7 @@ func Routes(r *mux.Router) {
 	router.Use(v1middlewares.AuthenticationMiddleware)
 	router.HandleFunc("/shorten/", Shorten).Methods("POST")
 	router.HandleFunc("/custom/", CustomUrl).Methods("POST")
+	router.HandleFunc("/url_expiry/", UrlExpiry).Methods("POST")
 	router.HandleFunc("/", UrlFilter).Methods("GET")
-	router.HandleFunc("/{id:[0-9]+}", UrlFilter).Methods("PUT","PATCH","DELETE")
+	router.HandleFunc("/{id:[0-9]+}", UpdateDeleteUrl).Methods("PUT","PATCH","DELETE")
 }

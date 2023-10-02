@@ -4,7 +4,6 @@ import (
 	//"fmt"
 	"net/http"
 	"io/ioutil"
-	"os"
 	"strconv"
 	"encoding/json"
 	"github.com/gorilla/mux"
@@ -19,7 +18,6 @@ var numberStore=&NumberStore{0,100,100}
 
 func Shorten( w http.ResponseWriter, r *http.Request){
 	// instead of wasting number check if url exists then just give payload and also check for latest number before updating struct
-	baseUrl:=os.Getenv("BASE_URL")
 	url_length:=9
 	body, err:= ioutil.ReadAll(r.Body)
 	if err != nil{
@@ -42,10 +40,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 	newUrl.UserId =userId
 	_,exist:=newUrl.FindByOriginalUrl()
 	if exist == true{
-		utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
-			"original_url":newUrl.OriginalUrl,
-			"short_url": baseUrl+"/"+newUrl.ShortUrl,
-		})
+		utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", newUrl)
 		return
 	}
 
@@ -90,15 +85,13 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 	}
 
 	newUrl.ShortUrl=utils.ShortAccess(numberStore.Number, url_length)
+	newUrl.FillShortAccess()
 	err=newUrl.Create()
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
-	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", map[string]interface{}{
-		"original_url":newUrl.OriginalUrl,
-		"short_url": baseUrl+"/"+newUrl.ShortUrl,
-	})
+	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully shortened url", newUrl)
 	return
 }
 
@@ -140,12 +133,11 @@ func UrlExpiry(w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
 	}
-	utils.JsonResponse(w, true, http.StatusOK ,"Successfully set url expiry", nil)
+	utils.JsonResponse(w, true, http.StatusOK ,"Successfully set url expiry", oldUrl)
 	return
 }
 
 func CustomUrl(w http.ResponseWriter, r *http.Request){
-	baseUrl:=os.Getenv("BASE_URL")
 	body, err:= ioutil.ReadAll(r.Body)
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
@@ -171,16 +163,14 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	// now store new url
+	newUrl.FillShortAccess()
 	newUrl.IsCustom=true
 	err=newUrl.Create()
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
-	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully created custom url", map[string]interface{}{
-		"original_url":newUrl.OriginalUrl,
-		"short_url": baseUrl+"/"+newUrl.ShortUrl,
-	})
+	utils.JsonResponse(w, true, http.StatusCreated ,"Successfully created custom url", newUrl)
 	return
 }
 
@@ -236,7 +226,9 @@ func UpdateDeleteUrl(w http.ResponseWriter, r *http.Request){
 			return
 		}
 		var newUrl =&url.Url{}
+		newUrl.Id=oldUrl.Id
 		err=json.Unmarshal([]byte(body),&newUrl)
+
 		if err != nil{
 			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 			return

@@ -192,7 +192,7 @@ func CRUDQueryBuild(tableStruct interface{},tableName string, action string)(str
 				query+=jsonTag+","
 			}
 		}
-		query=query[:len(query)-1]+" WHERE id="+"$"+strconv.Itoa(1)
+		query=query[:len(query)-1]+" FROM "+tableName+" WHERE id="+"$"+strconv.Itoa(1)
 		queryValues = append(queryValues,Id)
 		return query,queryValues,nil
 
