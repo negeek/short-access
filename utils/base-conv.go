@@ -142,3 +142,84 @@ func Filter(queryParams map[string][]string, tableStruct interface{}, tableName 
 	return query, queryValues, nil
 	
 }
+
+func CRUDQueryBuild(tableStruct interface{},tableName string, action string)(string, []interface{}, error){
+	structType := reflect.TypeOf(tableStruct)
+	if structType.Kind() != reflect.Ptr || structType.Elem().Kind() != reflect.Struct {
+		return "",nil,errors.New("tableStruct must be pointer to a struct")
+	}
+	// Access the UserId field and Id field
+	idField := reflect.ValueOf(tableStruct).Elem().FieldByName("UserId")
+	if !idField.IsValid() || idField.Type() != reflect.TypeOf(uuid.UUID{}) {
+		return "",nil,errors.New("tableStruct must have UserId field and UserId field value must be type uuid.UUID") 
+	}
+	userId := idField.Interface()
+	idField = reflect.ValueOf(tableStruct).Elem().FieldByName("Id")
+	if !idField.IsValid() || idField.Kind() != reflect.Int {
+		return "",nil,errors.New("tableStruct must have Id field and Id field value must be type int") 
+	}
+	Id := idField.Interface()
+	var query string
+	var queryValues []interface{}
+	switch action{
+		
+	case "create":
+		Time(tableStruct,true)
+		queryValues = append(queryValues, userId)
+		query="INSERT INTO "+tableName+" (user_id,"
+		values:="($1,"
+		j:=2
+		for i:= 0; i<structType.Elem().NumField(); i++{
+			field := structType.Elem().Field(i)
+			jsonTag := field.Tag.Get("json")
+			if jsonTag != "-" && field.Name != "Id"{
+				query+=jsonTag+","
+				values+="$"+strconv.Itoa(j)+","
+				queryValues = append(queryValues, reflect.ValueOf(tableStruct).Elem().FieldByName(field.Name).Interface())
+				j++
+			}
+		}
+		values=values[:len(values)-1]+")"
+		query=query[:len(query)-1] + ") VALUES "+values
+		return query,queryValues,nil
+
+	case "retrieve":
+		query:="SELECT "
+		for i := 0; i < structType.Elem().NumField(); i++ {
+			field := structType.Elem().Field(i)
+			jsonTag := field.Tag.Get("json")
+			if jsonTag != "-"{
+				query+=jsonTag+","
+			}
+		}
+		query=query[:len(query)-1]+" WHERE id="+"$"+strconv.Itoa(1)
+		queryValues = append(queryValues,Id)
+		return query,queryValues,nil
+
+	case "update":
+		Time(tableStruct,false)
+		j:=1
+		query="UPDATE "+tableName+" SET "
+		for i:= 0; i<structType.Elem().NumField(); i++{
+			field := structType.Elem().Field(i)
+			jsonTag := field.Tag.Get("json")
+			if jsonTag != "-" && field.Name != "Id"{
+				query+=jsonTag+" = "+"$"+strconv.Itoa(j)+","
+				queryValues = append(queryValues, reflect.ValueOf(tableStruct).Elem().FieldByName(field.Name).Interface())
+				j++
+			}
+		}
+		query=query[:len(query)-1] + " WHERE id="+"$"+strconv.Itoa(j)
+		queryValues = append(queryValues,Id)
+		return query,queryValues,nil
+
+	case "delete":
+		query="DELETE FROM "+tableName+" WHERE id="+"$"+strconv.Itoa(1)
+		queryValues = append(queryValues,Id)
+		return query,queryValues,nil
+
+	default:
+		return "",nil,errors.New("action not supported. Allowed actions are: create, update, delete.")
+	}
+	
+}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/google/uuid"
@@ -119,18 +120,26 @@ func UrlExpiry(w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went Wrong. Try again", nil)
 		return
 	}
-	// ensure udate function works and findbyshorturl sets all url struct fields
-	expire_at:=utils.ExpiryDateTime(exp_dtl.TimeUnit, exp_dtl.TimeValue)
-	var newUrl url.Url
-	newUrl.UserId =userId
-	newUrl.ShortUrl=exp_dtl.ShortUrl
-	_,exist:=newUrl.FindByShortUrl()
-	if exist == false{
-		utils.JsonResponse(w, true, http.StatusBadRequest ,"Url provided does not exist", nil)
+	
+	expire_at,err2:=utils.ExpiryDateTime(exp_dtl.TimeUnit, exp_dtl.TimeValue)
+	if err2 != nil{
+		utils.JsonResponse(w, false, http.StatusBadRequest , err2.Error(), nil)
 		return
 	}
-	newUrl.Update()
-	// end
+	var oldUrl=&url.Url{}
+	oldUrl.UserId =userId
+	oldUrl.Id=exp_dtl.UrlId
+	_,exist:=oldUrl.FindById()
+	if exist == false{
+		utils.JsonResponse(w, true, http.StatusBadRequest ,"Url does not exist", nil)
+		return
+	}
+	oldUrl.ExpireAt=expire_at
+	err=oldUrl.Update()
+	if err != nil{
+		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+		return
+	}
 	utils.JsonResponse(w, true, http.StatusOK ,"Successfully set url expiry", nil)
 	return
 }
@@ -175,17 +184,107 @@ func CustomUrl(w http.ResponseWriter, r *http.Request){
 	return
 }
 
+func UpdateDeleteUrl(w http.ResponseWriter, r *http.Request){
+	if r.Method == "PATCH"{
+		var oldUrl =&url.Url{}
+		var err error
+		oldUrl.Id,err =strconv.Atoi(mux.Vars(r)["id"])
+		if err != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest,err.Error() , nil)
+			return
+		}
+		_,exist:=oldUrl.FindById()
+		if exist == false{
+			utils.JsonResponse(w, true, http.StatusBadRequest ,"Url does not exist", nil)
+			return
+		}
+		body, err2:= ioutil.ReadAll(r.Body)
+		if err2 != nil{
+			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+			return
+		}
+		err=json.Unmarshal([]byte(body),&oldUrl)
+		if err != nil{
+			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+			return
+		}
+		err=oldUrl.Update()
+		if err != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Try again." , nil)
+			return
+		}
+
+		utils.JsonResponse(w, true, http.StatusOK,"Successfully updated url" , oldUrl)
+		return
+	}
+	if r.Method == "PUT"{
+		var oldUrl =&url.Url{}
+		var err error
+		oldUrl.Id,err = strconv.Atoi(mux.Vars(r)["id"])
+		if err != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest,err.Error() , nil)
+			return
+		}
+		_,exist:=oldUrl.FindById()
+		if exist == false{
+			utils.JsonResponse(w, true, http.StatusBadRequest ,"Url does not exist", nil)
+			return
+		}
+		body, err2:= ioutil.ReadAll(r.Body)
+		if err2 != nil{
+			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+			return
+		}
+		var newUrl =&url.Url{}
+		err=json.Unmarshal([]byte(body),&newUrl)
+		if err != nil{
+			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
+			return
+		}
+		err=newUrl.Update()
+		if err != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Try again." , nil)
+			return
+		}
+
+		utils.JsonResponse(w, true, http.StatusOK,"Successfully updated url" , newUrl)
+		return
+	}
+	if r.Method=="DELETE"{
+		var oldUrl =&url.Url{}
+		var err error
+		oldUrl.Id,err= strconv.Atoi(mux.Vars(r)["id"])
+		if err != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest,err.Error() , nil)
+			return
+		}
+		_,exist:=oldUrl.FindById()
+		if exist == false{
+			utils.JsonResponse(w, true, http.StatusBadRequest ,"Url does not exist", nil)
+			return
+		}
+		err=oldUrl.Delete()
+		if err != nil {
+			utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Try again." , nil)
+			return
+		}
+		utils.JsonResponse(w, true, http.StatusNoContent,"Successfully deleted url" , oldUrl)
+	}
+}
+
 func UrlFilter(w http.ResponseWriter, r *http.Request){
 	userId, ok := r.Context().Value("user").(uuid.UUID)
 	if !ok {
 		utils.JsonResponse(w, false, http.StatusBadRequest , "Something went wrong. Try again", nil)
 		return
 	}
+	
 	var urll url.Url
 	var result []url.Url
 	urll.UserId =userId
 	queryParams:=r.URL.Query()
-	query,queryValues,err:=utils.Filter(queryParams,urll,"urls")
+
+	query,queryValues,err:=utils.Filter(queryParams,urll, urll.TableName())
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
@@ -207,12 +306,20 @@ func UrlRedirect( w http.ResponseWriter, r *http.Request){
 		utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Make sure url is valid." , nil)
 		return
 	}
+	// check expiry
+	expired:=oldUrl.Expired()
+	if expired{
+		utils.JsonResponse(w, false, http.StatusBadRequest,"Url has expired" , nil)
+		return
+	}
+	// increase access_count and update
 	oldUrl.AccessCount+=1
-	err:=oldUrl.UpdateAccessCount()
+	err:=oldUrl.Update()
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest,"Something went wrong. Try again." , nil)
 		return
 	}
+	// redirect
 	http.Redirect(w, r, oldUrl.OriginalUrl, http.StatusTemporaryRedirect)
 	return
 }

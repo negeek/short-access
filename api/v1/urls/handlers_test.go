@@ -77,14 +77,14 @@ func TestShorten(t *testing.T){
 		if err != nil {
 			t.Fatal(err)
 		}
-		newUser.Delete()
+		newUser.TestDelete()
 
 		var newUrl url.Url
 		err=json.Unmarshal([]byte(jsonBody2),&newUrl)
 		if err != nil {
 			t.Fatal(err)
 		}
-		newUrl.Delete()
+		newUrl.TestDelete()
 		fmt.Println("cleaning done")
 	}()
 }
@@ -152,14 +152,14 @@ func TestCustomUrl(t *testing.T){
 		if err != nil {
 			t.Fatal(err)
 		}
-		newUser.Delete()
+		newUser.TestDelete()
 
 		var newUrl url.Url
 		err=json.Unmarshal([]byte(jsonBody2),&newUrl)
 		if err != nil {
 			t.Fatal(err)
 		}
-		newUrl.Delete()
+		newUrl.TestDelete()
 		fmt.Println("cleaning done")
 	}()
 }

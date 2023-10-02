@@ -34,7 +34,7 @@ func TestSignUp(t *testing.T){
 	if err != nil {
         t.Fatal(err)
     }
-	newUser.Delete()
+	newUser.TestDelete()
 	fmt.Println("cleaning done")
 
 }
@@ -80,7 +80,7 @@ func TestNewToken(t *testing.T){
 		if err != nil {
 			t.Fatal(err)
 		}
-		newUser.Delete()
+		newUser.TestDelete()
 		fmt.Println("cleaning done")
 	}()
 

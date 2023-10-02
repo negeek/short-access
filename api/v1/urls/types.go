@@ -9,5 +9,5 @@ type NumberStore struct {
 type DateTimeExpiryDetail struct {
 	TimeUnit string `json:"time_unit"`
 	TimeValue int `json:"time_value"`
-	ShortUrl string `json:"short_url"`
+	UrlId int `json:"url_id"`
 }

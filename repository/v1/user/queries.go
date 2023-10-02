@@ -60,7 +60,8 @@ func (u *User) Authenticate() (error, bool) {
 	return nil, true
 }
 
-func (u *User) Delete() error {
+func (u *User) TestDelete() error {
+	// test purpose only
 	query:="DELETE FROM users WHERE email = $1"
 	_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.Email)
 	if err != nil {
