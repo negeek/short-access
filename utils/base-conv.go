@@ -219,7 +219,7 @@ func CRUDQueryBuild(tableStruct interface{},tableName string, action string)(str
 		return query,queryValues,nil
 
 	default:
-		return "",nil,errors.New("action not supported. Allowed actions are: create, update, delete.")
+		return "",nil,errors.New("action not supported. Allowed actions are: create, retrieve, update, delete.")
 	}
 	
 }
