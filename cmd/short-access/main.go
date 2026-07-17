@@ -11,10 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
-
 	"github.com/negeek/short-access/db"
 	"github.com/negeek/short-access/server"
+	"github.com/negeek/short-access/utils"
 )
 
 func main() {
@@ -105,7 +104,7 @@ func runMigrate(args []string) {
 // In Docker there is no .env file and the settings come from the environment,
 // which already takes precedence over anything a .env file would set.
 func loadEnv() {
-	_ = godotenv.Load()
+	_ = utils.LoadEnvFile(".env")
 }
 
 // databaseURL builds the Postgres connection string from the environment.

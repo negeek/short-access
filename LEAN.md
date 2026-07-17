@@ -24,11 +24,12 @@ There is no web framework and no ORM. The entire direct dependency list is:
 - **`jackc/pgx`** — the Postgres driver and connection pool.
 - **`golang-jwt`**, **`google/uuid`**, **`golang.org/x/crypto/bcrypt`** — tokens,
   ids, password hashing.
-- **`joho/godotenv`** — loads a `.env` file in development.
 
-That's the whole tree. A small dependency set means a small binary, fast builds,
-a smaller attack surface, and a codebase you can actually read end to end in an
-afternoon.
+That's the whole tree. Where a dependency would only save a few lines, we skip it:
+loading a `.env` file in development is just reading a file and setting variables,
+so we do that ourselves (`utils/env.go`) instead of pulling in a dotenv library. A
+small dependency set means a small binary, fast builds, a smaller attack surface,
+and a codebase you can actually read end to end in an afternoon.
 
 ## No framework tax on each request
 
