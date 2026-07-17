@@ -4,6 +4,7 @@ package url
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/negeek/short-access/apperr"
@@ -46,9 +47,14 @@ func NewService(urls *urlrepo.Repository, numbers *numberrepo.Repository) *Servi
 
 // Shorten returns a short url for the given original url. If the same user has
 // already shortened it, the existing record is returned instead of a new one.
-func (s *Service) Shorten(ctx context.Context, userID uuid.UUID, in *Url) (*Url, error) {
-	in.UserId = userID
+// An optional expiry can be set at creation (time unit + value, both or neither).
+func (s *Service) Shorten(ctx context.Context, userID uuid.UUID, in *Url, unit string, value int) (*Url, error) {
+	expireAt, err := optionalExpiry(unit, value)
+	if err != nil {
+		return nil, err
+	}
 
+	in.UserId = userID
 	found, err := s.urls.FindByOriginalURL(ctx, in)
 	if err != nil {
 		return nil, apperr.Internal(err)
@@ -64,10 +70,32 @@ func (s *Service) Shorten(ctx context.Context, userID uuid.UUID, in *Url) (*Url,
 
 	in.ShortUrl = utils.ShortAccess(number, slugLength)
 	in.FillShortAccess()
+	if expireAt != nil {
+		in.ExpireAt = *expireAt
+	}
 	if err := s.urls.Create(ctx, in); err != nil {
 		return nil, apperr.Internal(err)
 	}
 	return in, nil
+}
+
+// optionalExpiry turns an optional time unit + value into an expiry time. Both
+// must be given or neither; passing only one is a bad request.
+func optionalExpiry(unit string, value int) (*time.Time, error) {
+	if unit == "" && value == 0 {
+		return nil, nil // no expiry: the link never expires
+	}
+	if unit == "" || value == 0 {
+		return nil, apperr.BadRequest("provide both time_unit and time_value, or neither")
+	}
+	if value < 0 {
+		return nil, apperr.BadRequest("time_value must be greater than 0")
+	}
+	expireAt, err := utils.ExpiryDateTime(unit, value)
+	if err != nil {
+		return nil, apperr.BadRequest(err.Error())
+	}
+	return &expireAt, nil
 }
 
 // nextNumber returns the next counter value, reserving a new block from the
@@ -112,10 +140,14 @@ func (s *Service) nextNumber(ctx context.Context) (int, error) {
 }
 
 // CreateCustom stores a url with a slug the user chose. It fails if that slug is
-// already taken.
-func (s *Service) CreateCustom(ctx context.Context, userID uuid.UUID, in *Url) (*Url, error) {
-	in.UserId = userID
+// already taken. An optional expiry can be set at creation (both or neither).
+func (s *Service) CreateCustom(ctx context.Context, userID uuid.UUID, in *Url, unit string, value int) (*Url, error) {
+	expireAt, err := optionalExpiry(unit, value)
+	if err != nil {
+		return nil, err
+	}
 
+	in.UserId = userID
 	found, err := s.urls.FindByShortURL(ctx, in)
 	if err != nil {
 		return nil, apperr.Internal(err)
@@ -126,6 +158,9 @@ func (s *Service) CreateCustom(ctx context.Context, userID uuid.UUID, in *Url) (
 
 	in.FillShortAccess()
 	in.IsCustom = true
+	if expireAt != nil {
+		in.ExpireAt = *expireAt
+	}
 	if err := s.urls.Create(ctx, in); err != nil {
 		return nil, apperr.Internal(err)
 	}

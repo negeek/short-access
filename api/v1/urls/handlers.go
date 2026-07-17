@@ -20,7 +20,7 @@ func NewHandler(urls *urlservice.Service) *Handler {
 }
 
 func (h *Handler) Shorten(w http.ResponseWriter, r *http.Request) {
-	newUrl, err := utils.DecodeBody[urlservice.Url](r)
+	req, err := utils.DecodeBody[ShortenRequest](r)
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -32,7 +32,8 @@ func (h *Handler) Shorten(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.urls.Shorten(r.Context(), userID, &newUrl)
+	newUrl := urlservice.Url{OriginalUrl: req.OriginalUrl}
+	created, err := h.urls.Shorten(r.Context(), userID, &newUrl, req.TimeUnit, req.TimeValue)
 	if err != nil {
 		utils.RespondError(w, err)
 		return
@@ -62,7 +63,7 @@ func (h *Handler) UrlExpiry(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CustomUrl(w http.ResponseWriter, r *http.Request) {
-	newUrl, err := utils.DecodeBody[urlservice.Url](r)
+	req, err := utils.DecodeBody[ShortenRequest](r)
 	if err != nil {
 		utils.JsonResponse(w, false, http.StatusBadRequest, err.Error(), nil)
 		return
@@ -74,7 +75,8 @@ func (h *Handler) CustomUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.urls.CreateCustom(r.Context(), userID, &newUrl)
+	newUrl := urlservice.Url{OriginalUrl: req.OriginalUrl, ShortUrl: req.ShortUrl}
+	created, err := h.urls.CreateCustom(r.Context(), userID, &newUrl, req.TimeUnit, req.TimeValue)
 	if err != nil {
 		utils.RespondError(w, err)
 		return

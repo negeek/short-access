@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestShortenAndRedirect(t *testing.T) {
@@ -37,6 +38,38 @@ func TestShortenAndRedirect(t *testing.T) {
 	json.Unmarshal(env.Data, &list)
 	if len(list) != 1 || list[0].AccessCount != 1 {
 		t.Fatalf("expected one url with access_count 1, got %+v", list)
+	}
+}
+
+func TestShortenWithExpiryAtCreation(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+	client := noRedirectClient()
+
+	token := signup(t, client, srv, "expiry@example.com", "secret123")
+	key := createKey(t, client, srv, token)
+
+	// Both time_unit and time_value set: the url gets a real expiry.
+	resp, env := request(t, client, srv, http.MethodPost, "/api/v1/url_mgt/shorten/",
+		map[string]string{"X-API-Key": key},
+		map[string]any{"original_url": "https://example.com/a", "time_unit": "d", "time_value": 1})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("shorten with expiry: got %d (%s)", resp.StatusCode, env.Message)
+	}
+	var created struct {
+		ExpireAt time.Time `json:"expire_at"`
+	}
+	json.Unmarshal(env.Data, &created)
+	if !created.ExpireAt.After(time.Now()) {
+		t.Fatalf("expected a future expiry, got %v", created.ExpireAt)
+	}
+
+	// Only one of the two set: rejected.
+	resp, _ = request(t, client, srv, http.MethodPost, "/api/v1/url_mgt/shorten/",
+		map[string]string{"X-API-Key": key},
+		map[string]any{"original_url": "https://example.com/b", "time_unit": "d"})
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("shorten with only time_unit: expected 400, got %d", resp.StatusCode)
 	}
 }
 
