@@ -3,6 +3,7 @@ package url
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/negeek/short-access/utils"
@@ -59,6 +60,13 @@ func (repo *Repository) FindByID(ctx context.Context, u *Url) (bool, error) {
 		return false, err
 	}
 	return repo.queryOne(ctx, u, query, values...)
+}
+
+// FindByIDForUser loads a url only if it belongs to the given user. This is how
+// we stop one user from touching another user's urls.
+func (repo *Repository) FindByIDForUser(ctx context.Context, u *Url, userID uuid.UUID) (bool, error) {
+	query := "SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE id=$1 AND user_id=$2"
+	return repo.queryOne(ctx, u, query, u.Id, userID)
 }
 
 func (repo *Repository) FindByOriginalURL(ctx context.Context, u *Url) (bool, error) {

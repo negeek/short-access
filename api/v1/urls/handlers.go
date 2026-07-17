@@ -89,10 +89,16 @@ func (h *Handler) UpdateDeleteUrl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userID, ok := v1middlewares.UserID(r.Context())
+	if !ok {
+		utils.JsonResponse(w, false, http.StatusBadRequest, "Something went wrong. Try again", nil)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodPatch:
 		// Load the current record, overlay the incoming fields, then save.
-		current, err := h.urls.GetByID(r.Context(), id)
+		current, err := h.urls.GetByID(r.Context(), userID, id)
 		if err != nil {
 			utils.RespondError(w, err)
 			return
@@ -109,7 +115,7 @@ func (h *Handler) UpdateDeleteUrl(w http.ResponseWriter, r *http.Request) {
 		utils.JsonResponse(w, true, http.StatusOK, "Successfully updated url", updated)
 
 	case http.MethodPut:
-		if _, err := h.urls.GetByID(r.Context(), id); err != nil {
+		if _, err := h.urls.GetByID(r.Context(), userID, id); err != nil {
 			utils.RespondError(w, err)
 			return
 		}
@@ -126,7 +132,7 @@ func (h *Handler) UpdateDeleteUrl(w http.ResponseWriter, r *http.Request) {
 		utils.JsonResponse(w, true, http.StatusOK, "Successfully updated url", updated)
 
 	case http.MethodDelete:
-		if err := h.urls.Delete(r.Context(), id); err != nil {
+		if err := h.urls.Delete(r.Context(), userID, id); err != nil {
 			utils.RespondError(w, err)
 			return
 		}

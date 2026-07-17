@@ -140,7 +140,7 @@ func (s *Service) SetExpiry(ctx context.Context, userID uuid.UUID, urlID int, un
 	}
 
 	target := &Url{Id: urlID, UserId: userID}
-	found, err := s.urls.FindByID(ctx, target)
+	found, err := s.urls.FindByIDForUser(ctx, target, userID)
 	if err != nil {
 		return nil, apperr.Internal(err)
 	}
@@ -155,10 +155,10 @@ func (s *Service) SetExpiry(ctx context.Context, userID uuid.UUID, urlID int, un
 	return target, nil
 }
 
-// GetByID loads a url by id, or reports that it does not exist.
-func (s *Service) GetByID(ctx context.Context, id int) (*Url, error) {
+// GetByID loads one of the user's urls by id, or reports that it does not exist.
+func (s *Service) GetByID(ctx context.Context, userID uuid.UUID, id int) (*Url, error) {
 	target := &Url{Id: id}
-	found, err := s.urls.FindByID(ctx, target)
+	found, err := s.urls.FindByIDForUser(ctx, target, userID)
 	if err != nil {
 		return nil, apperr.Internal(err)
 	}
@@ -176,10 +176,10 @@ func (s *Service) Save(ctx context.Context, u *Url) (*Url, error) {
 	return u, nil
 }
 
-// Delete removes a url by id after checking it exists.
-func (s *Service) Delete(ctx context.Context, id int) error {
+// Delete removes one of the user's urls by id after checking they own it.
+func (s *Service) Delete(ctx context.Context, userID uuid.UUID, id int) error {
 	target := &Url{Id: id}
-	found, err := s.urls.FindByID(ctx, target)
+	found, err := s.urls.FindByIDForUser(ctx, target, userID)
 	if err != nil {
 		return apperr.Internal(err)
 	}
