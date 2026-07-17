@@ -32,12 +32,53 @@ func TestShortenAndRedirect(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("list: got status %d", resp.StatusCode)
 	}
-	var list []struct {
-		AccessCount int `json:"access_count"`
+	var page struct {
+		Items []struct {
+			AccessCount int `json:"access_count"`
+		} `json:"items"`
+		Count int `json:"count"`
 	}
-	json.Unmarshal(env.Data, &list)
-	if len(list) != 1 || list[0].AccessCount != 1 {
-		t.Fatalf("expected one url with access_count 1, got %+v", list)
+	json.Unmarshal(env.Data, &page)
+	if page.Count != 1 || len(page.Items) != 1 || page.Items[0].AccessCount != 1 {
+		t.Fatalf("expected one url with access_count 1, got %+v", page)
+	}
+}
+
+func TestListPagination(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+	client := noRedirectClient()
+
+	token := signup(t, client, srv, "pager@example.com", "secret123")
+	key := createKey(t, client, srv, token)
+
+	// Create three urls.
+	for _, u := range []string{"https://a.example.com", "https://b.example.com", "https://c.example.com"} {
+		shorten(t, client, srv, key, u)
+	}
+
+	// First page of two: two items and has_more true.
+	_, env := request(t, client, srv, http.MethodGet, "/api/v1/url_mgt/?limit=2",
+		map[string]string{"X-API-Key": key}, nil)
+	var first struct {
+		Items   []json.RawMessage `json:"items"`
+		HasMore bool              `json:"has_more"`
+	}
+	json.Unmarshal(env.Data, &first)
+	if len(first.Items) != 2 || !first.HasMore {
+		t.Fatalf("first page: expected 2 items and has_more, got %d items has_more=%v", len(first.Items), first.HasMore)
+	}
+
+	// Second page: the remaining one, has_more false.
+	_, env = request(t, client, srv, http.MethodGet, "/api/v1/url_mgt/?limit=2&offset=2",
+		map[string]string{"X-API-Key": key}, nil)
+	var second struct {
+		Items   []json.RawMessage `json:"items"`
+		HasMore bool              `json:"has_more"`
+	}
+	json.Unmarshal(env.Data, &second)
+	if len(second.Items) != 1 || second.HasMore {
+		t.Fatalf("second page: expected 1 item and no has_more, got %d items has_more=%v", len(second.Items), second.HasMore)
 	}
 }
 

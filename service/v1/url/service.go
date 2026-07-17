@@ -3,6 +3,7 @@ package url
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -227,18 +228,40 @@ func (s *Service) Delete(ctx context.Context, userID uuid.UUID, id int) error {
 	return nil
 }
 
-// List returns the caller's urls, filtered by the given query parameters.
-func (s *Service) List(ctx context.Context, userID uuid.UUID, queryParams map[string][]string) ([]Url, error) {
+// List returns a page of the caller's urls, filtered by the given query
+// parameters. Paging is controlled by limit (default 20, max 100) and offset.
+func (s *Service) List(ctx context.Context, userID uuid.UUID, queryParams map[string][]string) (utils.Page[Url], error) {
+	limit, offset := utils.PageParams(queryParams)
+
 	filter := Url{UserId: userID}
-	query, values, err := utils.Filter(queryParams, filter, filter.TableName())
+	query, values, err := utils.Filter(withoutPaging(queryParams), filter, filter.TableName())
 	if err != nil {
-		return nil, apperr.BadRequest(err.Error())
+		return utils.Page[Url]{}, apperr.BadRequest(err.Error())
 	}
+
+	// A stable order keeps paging consistent. Fetch one extra row so we can tell
+	// whether another page exists without a separate count query.
+	query += " ORDER BY id LIMIT $" + strconv.Itoa(len(values)+1) + " OFFSET $" + strconv.Itoa(len(values)+2)
+	values = append(values, limit+1, offset)
+
 	urls, err := s.urls.UserURLs(ctx, query, values)
 	if err != nil {
-		return nil, apperr.Internal(err)
+		return utils.Page[Url]{}, apperr.Internal(err)
 	}
-	return urls, nil
+	return utils.NewPage(urls, limit, offset), nil
+}
+
+// withoutPaging copies params without the paging keys, so they aren't mistaken
+// for column filters by Filter.
+func withoutPaging(params map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(params))
+	for k, v := range params {
+		if k == "limit" || k == "offset" {
+			continue
+		}
+		out[k] = v
+	}
+	return out
 }
 
 // Redirect looks up a slug, makes sure it is still valid, counts the visit and
