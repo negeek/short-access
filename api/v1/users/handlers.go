@@ -3,29 +3,19 @@ package users
 import (
 	//"fmt"
 	"net/http"
-	"io/ioutil"
-	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/negeek/short-access/utils"
 	"github.com/negeek/short-access/repository/v1/user"
 		)
 
 func SignUp(w http.ResponseWriter, r *http.Request){
-	body, err:= ioutil.ReadAll(r.Body)
-	// if there is error reading body set statuscode and print out the error
+	// read the sign up details from the request body
+	newUser, err := utils.DecodeBody[user.User](r)
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-		return	
+		return
 	}
 
-	// create user
-	var newUser user.User
-	err=json.Unmarshal([]byte(body),&newUser)
-	if err != nil{
-		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-		return	
-	}
-	
 	newUser.Id=uuid.New()
 	// check if email exists. Tell user to input another email
 	emailExists:=newUser.EmailExists()
@@ -58,16 +48,8 @@ func NewToken(w http.ResponseWriter, r *http.Request){
 	/*since the token doesn't expire. Get the email the user used on the api to signup and then get user_id and generate
 	the token. The token will always be the same due to the claims */
 
-	body, err:= ioutil.ReadAll(r.Body)
-	// if there is error reading body set statuscode and print out the error
-	if err != nil{
-		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-		return	
-	}
-
-	var oldUser user.User
-	err=json.Unmarshal([]byte(body),&oldUser)
-
+	// read the login details from the request body
+	oldUser, err := utils.DecodeBody[user.User](r)
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return

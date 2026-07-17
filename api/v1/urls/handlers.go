@@ -3,9 +3,7 @@ package urls
 import (
 	//"fmt"
 	"net/http"
-	"io/ioutil"
 	"strconv"
-	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/google/uuid"
 	"github.com/negeek/short-access/utils"
@@ -19,14 +17,7 @@ var numberStore=&NumberStore{0,100,100}
 func Shorten( w http.ResponseWriter, r *http.Request){
 	// instead of wasting number check if url exists then just give payload and also check for latest number before updating struct
 	url_length:=9
-	body, err:= ioutil.ReadAll(r.Body)
-	if err != nil{
-		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-		return
-	}
-
-	var newUrl url.Url
-	err=json.Unmarshal([]byte(body),&newUrl)
+	newUrl, err := utils.DecodeBody[url.Url](r)
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
@@ -97,13 +88,7 @@ func Shorten( w http.ResponseWriter, r *http.Request){
 
 func UrlExpiry(w http.ResponseWriter, r *http.Request){
 	// set expiry datetime of a url that has been shortened.
-	body, err:= ioutil.ReadAll(r.Body)
-	if err != nil{
-		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-		return
-	}
-	var exp_dtl DateTimeExpiryDetail
-	err=json.Unmarshal([]byte(body),&exp_dtl)
+	exp_dtl, err := utils.DecodeBody[DateTimeExpiryDetail](r)
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
@@ -138,13 +123,7 @@ func UrlExpiry(w http.ResponseWriter, r *http.Request){
 }
 
 func CustomUrl(w http.ResponseWriter, r *http.Request){
-	body, err:= ioutil.ReadAll(r.Body)
-	if err != nil{
-		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-		return
-	}
-	var newUrl url.Url
-	err=json.Unmarshal([]byte(body),&newUrl)
+	newUrl, err := utils.DecodeBody[url.Url](r)
 	if err != nil{
 		utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 		return
@@ -188,12 +167,7 @@ func UpdateDeleteUrl(w http.ResponseWriter, r *http.Request){
 			utils.JsonResponse(w, true, http.StatusBadRequest ,"Url does not exist", nil)
 			return
 		}
-		body, err2:= ioutil.ReadAll(r.Body)
-		if err2 != nil{
-			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-			return
-		}
-		err=json.Unmarshal([]byte(body),&oldUrl)
+		err=utils.DecodeBodyInto(r, oldUrl)
 		if err != nil{
 			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 			return
@@ -220,15 +194,9 @@ func UpdateDeleteUrl(w http.ResponseWriter, r *http.Request){
 			utils.JsonResponse(w, true, http.StatusBadRequest ,"Url does not exist", nil)
 			return
 		}
-		body, err2:= ioutil.ReadAll(r.Body)
-		if err2 != nil{
-			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
-			return
-		}
 		var newUrl =&url.Url{}
 		newUrl.Id=oldUrl.Id
-		err=json.Unmarshal([]byte(body),&newUrl)
-
+		err=utils.DecodeBodyInto(r, newUrl)
 		if err != nil{
 			utils.JsonResponse(w, false, http.StatusBadRequest , err.Error(), nil)
 			return
