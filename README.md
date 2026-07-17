@@ -1,230 +1,157 @@
 # Short-Access
 
-A self-hosted URL shortener with a small HTTP API. You run it yourself with
-Docker: point your app at it, create an API key, and start shortening links.
+Short-Access is a self-hostable URL shortener with a small, friendly HTTP API.
+You run it on your own machine or server, point your application at it, and it
+hands back short links — with expiry, custom slugs, visit counting, and API keys.
 
-It is deliberately lean — Go standard library, `gorilla/mux` for routing, and
-Postgres. No web framework.
+It is built to be lean on purpose. There is no web framework and only a handful
+of dependencies: Go's standard library, `gorilla/mux` for routing, and Postgres
+for storage. That leanness is the whole idea — it keeps the compiled binary
+small, startup close to instant, and memory use low, so a single modest
+container comfortably serves a lot of redirects. Fewer moving parts also means
+less to audit and less that can break. Migrations are even embedded in the
+binary, so one image both migrates the database and serves traffic.
 
 ## How auth works
 
-There are two credentials:
+There are two kinds of credential:
 
-- **JWT** — sent as `Authorization: Bearer <token>`. You get one when you sign up
-  or log in. Required for managing your account and your API keys.
-- **API keys** — sent as `X-API-Key: <key>`. You create a key once (with your
-  JWT) for your application to use.
+- **JWT** — sent as `Authorization: Bearer <token>`. You receive one when you
+  sign up or log in. It is what you use to manage your account and your API keys.
+- **API keys** — sent as `X-API-Key: <key>`. You create a key once (using your
+  JWT) and hand it to your application.
 
-The **URL endpoints accept either** — an API key (typical for an app) or a JWT
-(handy for a signed-in user). Account and key-management endpoints require the
-JWT.
+The **action endpoints** (everything under `/url_mgt`) accept **either**
+credential, so you can call them with a JWT or an API key. In practice, **prefer
+an API key**: unlike the JWT, you can give a key its own expiry, and you can
+revoke it at any time without touching your password — which is exactly what you
+want for something living inside an application.
 
-The usual flow is: **sign up → get a token → create an API key → use that key
-from your app.**
+So the usual journey is: **sign up → get a token → create an API key → use that
+key from your app.**
 
-## Interactive docs
+## Self-host guide
 
-Once it's running, browse the API at **`http://localhost:8080/docs`** (Swagger
-UI). The raw OpenAPI spec is at `/openapi.yaml`.
+You only need Docker. You are not building anything from source here — you run
+the image that's already published.
 
-## Run it (self-host)
+**1. Get the compose file.** Grab
+[`docker-compose.sample.yml`](docker-compose.sample.yml) and save it in your
+project as `docker-compose.yml`. It pulls the published image and wires up
+Postgres, a one-shot migration step, and the server.
 
-You only need Docker. You do not build anything — you run the published image.
+**2. Create a `.env` next to it.** See [`.env.example`](.env.example) for the
+full list. The important ones:
 
-1. Grab the template compose file [`docker-compose.sample.yml`](docker-compose.sample.yml)
-   and save it in your project as `docker-compose.yml`.
-2. Create a `.env` next to it (see [`.env.example`](.env.example) for the full
-   list):
+```env
+POSTGRES_USER=sauser
+POSTGRES_PASSWORD=sapass
+POSTGRES_DB=sadb
+BASE_URL=http://localhost:8080
+AUTH_KEY=change-me-to-a-long-random-secret
+```
 
-   ```env
-   POSTGRES_USER=sauser
-   POSTGRES_PASSWORD=sapass
-   POSTGRES_DB=sadb
-   BASE_URL=http://localhost:8080
-   AUTH_KEY=change-me-to-a-long-random-secret
-   ```
+- **`BASE_URL`** is the public address people will reach your instance at. It is
+  used to build the *full* short link that gets returned to you — the slug is
+  tacked onto the end of it (so `BASE_URL` of `https://sho.rt` turns slug `abc123`
+  into `https://sho.rt/abc123`). Set it to wherever your instance actually lives.
+- **`AUTH_KEY`** is the secret used to sign your JWT tokens. Make it a long,
+  random string and keep it private — anyone who has it can mint valid tokens.
+  If you ever change it, existing tokens stop working (everyone re-logs in).
 
-3. Start it:
+**3. Start it.**
 
-   ```bash
-   docker compose up -d
-   ```
+```bash
+docker compose up -d
+```
 
-   Postgres comes up, `short-access-migrate` runs the migrations and exits, then
-   `short-access-engine` starts serving on `http://localhost:8080`.
+Postgres comes up, the migration container runs and exits, and the server starts
+serving on `http://localhost:8080`.
 
 ### Image tags
 
-Images are published to Docker Hub as `negeek/short-access`. `:latest` tracks
-the main branch; released versions are tagged with semver (`:1.0.0`, `:1.0`,
-`:1`). Pin a version in your compose file for anything you care about.
+Images are published to Docker Hub as `negeek/short-access`. `:latest` follows
+the main branch; releases are tagged with semver (`:1.0.0`, `:1.0`, `:1`). Pin a
+version in your compose file for anything you care about keeping stable.
 
-### Run without Docker
+### Installing with Go (no Docker)
 
-If you have Go, you can install the binary straight from the repo:
+If you already have Go, you can skip Docker entirely and install the binary
+straight from the source:
 
 ```bash
 go install github.com/negeek/short-access/cmd/short-access@latest
 ```
 
-You still need a Postgres. Set the same environment variables (see
-[`.env.example`](.env.example)), apply migrations with `short-access migrate up`,
-then run `short-access` to serve.
+Here's what that actually does, step by step. `go install` reads that import
+path, downloads this project's code from GitHub, compiles the `short-access`
+command, and drops the finished binary into your Go bin directory
+(`$(go env GOPATH)/bin`, usually `~/go/bin`). If that directory is on your
+`PATH`, you can then just type `short-access` to run it. The `@latest` on the end
+tells Go to use the newest released version — that is, the highest `vX.Y.Z` git
+tag on the repo; you could pin a specific one instead, like `@v1.0.0`.
 
-## API
+You still need a Postgres for it to talk to. Set the same environment variables
+as above, apply the schema once with `short-access migrate up`, then run
+`short-access` to serve.
 
-Base URL below is `http://localhost:8080`.
+## What the API can do
 
-### Sign up
+Base URL below is `http://localhost:8080`. Here is the whole onboarding flow you
+need to get started — sign up, create a key, and check the service is healthy:
 
 ```bash
+# 1. Sign up -> returns a JWT in "access_token"
 curl -X POST 'http://localhost:8080/api/v1/user_mgt/join/' \
   -H 'Content-Type: application/json' \
   -d '{"email":"you@example.com","password":"a-good-password"}'
-```
 
-Returns an `access_token` (JWT).
-
-### Get a new token
-
-```bash
-curl -X POST 'http://localhost:8080/api/v1/user_mgt/new_token/' \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"you@example.com","password":"a-good-password"}'
-```
-
-### Create an API key (JWT required)
-
-```bash
+# 2. Create an API key with that JWT -> returns the raw key ONCE, save it
 curl -X POST 'http://localhost:8080/api/v1/user_mgt/api_keys/' \
   -H 'Authorization: Bearer <token>' \
   -H 'Content-Type: application/json' \
   -d '{"name":"my app"}'
-```
 
-The response includes `api_key` — the raw key. **Copy it now; it is never shown
-again.** You can also pass an optional `expire_at` (RFC 3339 timestamp); leave it
-out for a key that never expires.
-
-Manage keys:
-
-- `GET /api/v1/user_mgt/api_keys/` — list your keys
-- `POST /api/v1/user_mgt/api_keys/{id}/revoke` — revoke a key
-- `DELETE /api/v1/user_mgt/api_keys/{id}` — delete a key
-
-All URL endpoints below accept **either** `X-API-Key: <key>` **or**
-`Authorization: Bearer <token>`.
-
-### Shorten a URL
-
-```bash
-curl -X POST 'http://localhost:8080/api/v1/url_mgt/shorten/' \
-  -H 'X-API-Key: <key>' \
-  -H 'Content-Type: application/json' \
-  -d '{"original_url":"https://pkg.go.dev/net/http"}'
-```
-
-The response includes `short_url` (the slug) and `short_access` (the full link,
-built from `BASE_URL`).
-
-You can optionally set an expiry at creation with `time_unit` + `time_value`
-(pass both or neither — see the units under [Set expiry](#set-expiry)):
-
-```bash
-curl -X POST 'http://localhost:8080/api/v1/url_mgt/shorten/' \
-  -H 'X-API-Key: <key>' \
-  -H 'Content-Type: application/json' \
-  -d '{"original_url":"https://pkg.go.dev/net/http","time_unit":"d","time_value":7}'
-```
-
-### Custom slug
-
-```bash
-curl -X POST 'http://localhost:8080/api/v1/url_mgt/custom/' \
-  -H 'X-API-Key: <key>' \
-  -H 'Content-Type: application/json' \
-  -d '{"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp"}'
-```
-
-Custom URLs accept the same optional `time_unit` + `time_value`.
-
-### Set expiry
-
-`time_unit` is one of `y`, `mo`, `d`, `h`, `m`, `s` (year, month, day, hour,
-minute, second). This one expires 40 seconds from now:
-
-```bash
-curl -X POST 'http://localhost:8080/api/v1/url_mgt/url_expiry/' \
-  -H 'X-API-Key: <key>' \
-  -H 'Content-Type: application/json' \
-  -d '{"time_unit":"s","time_value":40,"url_id":1}'
-```
-
-### List / filter your URLs
-
-Paginated with `limit` (default 20, max 100) and `offset`. You can also filter
-by any column, e.g. `id` or `short_url`.
-
-```bash
-curl 'http://localhost:8080/api/v1/url_mgt/?limit=20&offset=0' -H 'X-API-Key: <key>'
-curl 'http://localhost:8080/api/v1/url_mgt/?id=1&short_url=nethttp' -H 'X-API-Key: <key>'
-```
-
-The `data` is a page object: `items` (the URLs), plus `limit`, `offset`, `count`
-and `has_more`.
-
-### Update / delete a URL
-
-```bash
-curl -X PATCH  'http://localhost:8080/api/v1/url_mgt/1' -H 'X-API-Key: <key>' -H 'Content-Type: application/json' -d '{"original_url":"https://go.dev"}'
-curl -X PUT    'http://localhost:8080/api/v1/url_mgt/1' -H 'X-API-Key: <key>' -H 'Content-Type: application/json' -d '{"original_url":"https://go.dev"}'
-curl -X DELETE 'http://localhost:8080/api/v1/url_mgt/1' -H 'X-API-Key: <key>'
-```
-
-### Follow a short link
-
-```bash
-curl -i 'http://localhost:8080/<slug>'
-```
-
-Redirects to the original URL and counts the visit.
-
-### Health check
-
-```bash
+# 3. Health check -> 200 when the service and its database are up
 curl -i 'http://localhost:8080/healthz'
 ```
 
-Returns `200` when the service can reach its database, `503` otherwise. The
-container healthcheck uses this.
+From there, using your API key, the URL API lets you:
+
+- **Shorten a URL** and get an auto-generated slug back.
+- **Choose a custom slug** instead of the generated one.
+- **Set an expiry** so a link stops working after a chosen amount of time
+  (seconds through years) — either at creation or later.
+- **List and filter** your links, paginated, filtering by fields like id or slug.
+- **Update or delete** a link.
+- **Follow a link** — visiting the short URL redirects to the original and counts
+  the visit.
+
+And with your JWT you can **manage API keys** — list them, revoke one, or delete
+one.
+
+You don't have to memorize request shapes: the running service ships **interactive
+API docs**. Open **`http://localhost:8080/docs`** in a browser to try every
+endpoint (Swagger UI), or read the raw spec at `/openapi.yaml`. That is the
+source of truth for exact fields, parameters and responses — this README just
+gets you moving.
 
 ## Local development
 
-You need Go and a Postgres you can point at. Common tasks are in the
-[`Makefile`](Makefile):
+Most people should just run the Docker image; this section is only if you want to
+hack on the code.
 
 ```bash
-make run          # run the server
-make format       # format the code
-make test         # run tests
-make migrate-up   # apply migrations
-make migrate-down # roll back the last migration
-make docker-up    # build and run the whole stack locally
+make run     # run the server locally
+make test    # run tests (see below)
+make help    # list every available command
 ```
 
-Run `make help` to see everything.
-
-### Tests
-
-Tests run against a real database. The compose file ships a throwaway one behind
-a `test` profile, so the easiest path is:
+Tests run against a real database. The compose file includes a throwaway one
+behind a `test` profile:
 
 ```bash
-make test-db-up        # start the throwaway Postgres (host port 5444)
+make test-db-up        # start the throwaway Postgres
 make test-integration  # run the suite against it
-make test-db-down      # tear it down when you're done
+make test-db-down      # tear it down
 ```
-
-`make test` on its own runs everything too, but the database-backed tests skip
-themselves unless `TEST_DATABASE_URL` is set. The harness drops and recreates
-the schema, runs migrations, and clears the tables between tests.
