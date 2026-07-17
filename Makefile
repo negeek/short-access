@@ -32,12 +32,12 @@ tidy: ## Tidy up go.mod and go.sum
 	go mod tidy
 
 migrate-up: ## Apply all pending migrations
-	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" up
+	go run ./cmd/short-access migrate up
 
 migrate-down: ## Roll back the last migration
-	migrate -path $(MIGRATIONS_DIR) -database "$(DATABASE_URL)" down 1
+	go run ./cmd/short-access migrate down
 
-migrate-create: ## Create a new migration, e.g. make migrate-create name=add_widgets
+migrate-create: ## Create a new migration, e.g. make migrate-create name=add_widgets (needs golang-migrate)
 	migrate create -ext sql -dir $(MIGRATIONS_DIR) -seq $(name)
 
 docker-up: ## Start the stack with Docker Compose

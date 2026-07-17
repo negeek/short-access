@@ -1,23 +1,29 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.18-alpine
-# install golabg-migrate
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+# --- build stage ---
+FROM golang:1.24-alpine AS build
 
-ENV CGO_ENABLED=0
-
-# Set destination for COPY
 WORKDIR /app
 
-COPY . ./
-
-# Download Go modules
+# Download modules first so this layer is cached until go.mod/go.sum change.
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Build
-RUN go build -o main ./cmd/short-access/main.go
+COPY . .
+
+# Build a static binary. Migrations are embedded, so the image needs nothing else.
+RUN CGO_ENABLED=0 go build -o /short-access ./cmd/short-access
+
+# --- run stage ---
+FROM alpine:3.20
+
+# Run as a non-root user.
+RUN adduser -D -u 10001 app
+USER app
+
+COPY --from=build /short-access /usr/local/bin/short-access
 
 EXPOSE 8080
 
-# Run
-CMD ["./main"]
+# Default is to serve. Override the command with "migrate up" to run migrations.
+ENTRYPOINT ["short-access"]

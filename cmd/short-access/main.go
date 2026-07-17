@@ -19,14 +19,19 @@ import (
 
 func main() {
 	setupLogger()
+	loadEnv()
 
-	if os.Getenv("APP_ENV") == "dev" {
-		if err := godotenv.Load(".env"); err != nil {
-			slog.Error("could not load .env file", "error", err)
-			os.Exit(1)
-		}
+	// Subcommands: "migrate up" / "migrate down". With no arguments the binary
+	// runs the HTTP server. One image can therefore both migrate and serve.
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "migrate" {
+		runMigrate(args[1:])
+		return
 	}
+	runServer()
+}
 
+func runServer() {
 	slog.Info("connecting to database")
 	pool, err := db.Connect(databaseURL())
 	if err != nil {
@@ -61,6 +66,49 @@ func main() {
 	defer cancel()
 	srv.Shutdown(ctx)
 	os.Exit(0)
+}
+
+func runMigrate(args []string) {
+	direction := "up"
+	if len(args) > 0 {
+		direction = args[0]
+	}
+
+	pool, err := db.Connect(databaseURL())
+	if err != nil {
+		slog.Error("could not connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	ctx := context.Background()
+	switch direction {
+	case "up":
+		if err := db.MigrateUp(ctx, pool); err != nil {
+			slog.Error("migrate up failed", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("migrations applied")
+	case "down":
+		if err := db.MigrateDown(ctx, pool); err != nil {
+			slog.Error("migrate down failed", "error", err)
+			os.Exit(1)
+		}
+		slog.Info("rolled back last migration")
+	default:
+		slog.Error("unknown migrate command; use 'migrate up' or 'migrate down'", "got", direction)
+		os.Exit(1)
+	}
+}
+
+// loadEnv loads variables from a local .env file when running in dev mode.
+func loadEnv() {
+	if os.Getenv("APP_ENV") == "dev" {
+		if err := godotenv.Load(".env"); err != nil {
+			slog.Error("could not load .env file", "error", err)
+			os.Exit(1)
+		}
+	}
 }
 
 // databaseURL builds the Postgres connection string from the environment.

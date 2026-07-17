@@ -1,68 +1,176 @@
-# Short-Access 
+# Short-Access
 
-Short-Access is a free and powerful URL Shortener API built with Golang.
+A self-hosted URL shortener with a small HTTP API. You run it yourself with
+Docker: point your app at it, create an API key, and start shortening links.
 
-## How to Use
-#### To sign up:
-`curl -X POST 'https://shrt-acc.onrender.com/api/v1/user_mgt/join/' -H 'Content-Type: application/json' -d'{"email":"patrick@gmail.com","password":"dlionking77"}'`
+It is deliberately lean — Go standard library, `gorilla/mux` for routing, and
+Postgres. No web framework.
 
-###### example response: 
-`{"success":true,"message":"Successfully Joined","data":{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY","email":"patrick@gmail.com"}}`
+## How auth works
 
+There are two ways to authenticate, for two different jobs:
 
+- **JWT** — for managing your account and your API keys. You get a token when
+  you sign up or log in, and send it as `Authorization: Bearer <token>`.
+- **API keys** — for the URL endpoints your application calls. You create a key
+  once (with your JWT) and send it as `X-API-Key: <key>`.
 
-#### To get back access token:
-`curl -X POST 'https://shrt-acc.onrender.com/api/v1/user_mgt/new_token/' -H 'Content-Type: application/json' -d'{"email":"patrick@gmail.com", "password":"dlionking77}'`
+So the usual flow is: **sign up → get a token → create an API key → use that key
+from your app.**
 
-###### example response:
-`{"success":true,"message":"Token created Successfully","data":{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY","email":"patrick@gmail.com"}}`
+## Run it (self-host)
 
+You only need Docker. You do not build anything — you run the published image.
 
+1. Grab the template compose file [`docker-compose.sample.yml`](docker-compose.sample.yml)
+   and save it in your project as `docker-compose.yml`.
+2. Create a `.env` next to it (see [`.env.example`](.env.example) for the full
+   list):
 
-#### To shorten your URL: 
-`curl -X POST 'https://shrt-acc.onrender.com/api/v1/url_mgt/shorten/' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY' -d '{"original_url":"https://pkg.go.dev/net/http#pkg-constants"}'`
+   ```env
+   POSTGRES_USER=sauser
+   POSTGRES_PASSWORD=sapass
+   POSTGRES_DB=sadb
+   BASE_URL=http://localhost:8080
+   AUTH_KEY=change-me-to-a-long-random-secret
+   ```
 
-###### example response: 
-`{"success":true,"message":"Successfully shortened url","data":{"id":1,"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp","short_access":"https://shrt-acc.onrender.com/00000001u","is_custom":false,"access_count":0,"expire_at":"0001-01-01T00:00:00Z","date_created":"2023-06-02T18:19:40.150795Z","date_updated":"2023-06-02T19:15:17.617083581Z"}}`
+3. Start it:
 
+   ```bash
+   docker compose up -d
+   ```
 
+   Postgres comes up, `short-access-migrate` runs the migrations and exits, then
+   `short-access-engine` starts serving on `http://localhost:8080`.
 
-#### To create custom URL: 
-`curl -X POST 'https://shrt-acc.onrender.com/api/v1/url_mgt/custom/' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY' -d '{"original_url":"https://pkg.go.dev/net/http#pkg-constants","short_url":"negeek"}'`
+### Image tags
 
-###### example response: 
-`{"success":true,"message":"Successfully created custom url","data":{"id":2,"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp","short_access":"https://shrt-acc.onrender.com/nethttp","is_custom":true,"access_count":0,"expire_at":"0001-01-01T00:00:00Z","date_created":"2023-07-02T18:19:40.150795004Z","date_updated":"2023-07-02T18:19:40.150797413Z"}}`
+Images are published to Docker Hub as `negeek/short-access`. `:latest` tracks
+the main branch; released versions are tagged with semver (`:1.0.0`, `:1.0`,
+`:1`). Pin a version in your compose file for anything you care about.
 
+## API
 
+Base URL below is `http://localhost:8080`.
 
-#### To set URL Expiry:
-###### To set the time for url to expire: From the example request below. The url with id of 2 is set to expire 40 seconds from now. Other options for "time_unit" are "y", "mo", "d", "h", "m" denoting year, month, day, hour, minute  respectively.
-`curl -X POST 'https://shrt-acc.onrender.com/api/v1/url_mgt/url_expiry/' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY' -d '{"time_unit":"s","time_value":40,"url_id":2}'`
+### Sign up
 
-###### example response
-`{"success":true,"message":"Successfully set url expiry","data":{"id":2,"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp","short_access":"https://shrt-acc.onrender.com/nethttp","is_custom":true,"access_count":0,"expire_at":"2023-10-02T19:15:57.615924048Z",""date_created":"2023-07-02T18:19:40.150795004Z","date_updated":"2023-07-02T18:19:40.150797413Z"}}`
+```bash
+curl -X POST 'http://localhost:8080/api/v1/user_mgt/join/' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"a-good-password"}'
+```
 
+Returns an `access_token` (JWT).
 
+### Get a new token
 
-#### To get list or filter your URLs: 
-`curl -X GET 'https://shrt-acc.onrender.com/api/v1/url_mgt/' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY'`
+```bash
+curl -X POST 'http://localhost:8080/api/v1/user_mgt/new_token/' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com","password":"a-good-password"}'
+```
 
-`curl -X GET 'https://shrt-acc.onrender.com/api/v1/url_mgt/?id=2&short_url=nethttp' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjQ5MTc1OGYyLWM3OGYtNDE3MC05MDI0LWEzOWU5NTIxMjM0ZCIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.FVLuSkPnIHBaS46aFplaaDBzJc4IXM9hJ7xCnL8ZZyY'`
+### Create an API key (JWT required)
 
-###### example responses:
-`{"success":true,"message":"","data":[{"id":1,"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp","short_access":"https://shrt-acc.onrender.com/00000001u","is_custom":false,"access_count":0,"expire_at":"0001-01-01T00:00:00Z","date_created":"2023-06-02T18:19:40.150795Z","date_updated":"2023-06-02T19:15:17.617083581Z"},{"id":2,"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp","short_access":"https://shrt-acc.onrender.com/nethttp","is_custom":true,"access_count":0,"expire_at":"0001-01-01T00:00:00Z","date_created":"2023-07-02T18:19:40.150795004Z","date_updated":"2023-07-02T18:19:40.150797413Z"}]}`
+```bash
+curl -X POST 'http://localhost:8080/api/v1/user_mgt/api_keys/' \
+  -H 'Authorization: Bearer <token>' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"my app"}'
+```
 
-`{"success":true,"message":"","data":[{"id":2,"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp","short_access":"https://shrt-acc.onrender.com/nethttp","is_custom":true,"access_count":0,"expire_at":"0001-01-01T00:00:00Z","date_created":"2023-07-02T18:19:40.150795004Z","date_updated":"2023-07-02T18:19:40.150797413Z"}]}`
+The response includes `api_key` — the raw key. **Copy it now; it is never shown
+again.** You can also pass an optional `expire_at` (RFC 3339 timestamp); leave it
+out for a key that never expires.
 
+Manage keys:
 
+- `GET /api/v1/user_mgt/api_keys/` — list your keys
+- `POST /api/v1/user_mgt/api_keys/{id}/revoke` — revoke a key
+- `DELETE /api/v1/user_mgt/api_keys/{id}` — delete a key
 
-#### To Update(PATCH, PUT), Delete Url:
-###### for example you want to update, delete the url with id of 2
-`curl -X PATCH 'https://shrt-acc.onrender.com/api/v1/url_mgt/2' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjNiYzZkODQ3LWY5M2UtNDMyYS05NjcwLWZkOTFjYzRkZmY5YSIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.vQWYoUFs0_WZUIoBdvwms8iI3u_yqpQxPfAm5bLaJBc' -d '{"access_count":3}'`
+### Shorten a URL (API key required)
 
-`curl -X PUT 'https://shrt-acc.onrender.com/api/v1/url_mgt/2' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjNiYzZkODQ3LWY5M2UtNDMyYS05NjcwLWZkOTFjYzRkZmY5YSIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.vQWYoUFs0_WZUIoBdvwms8iI3u_yqpQxPfAm5bLaJBc' -d '{"access_count":3}'`
+```bash
+curl -X POST 'http://localhost:8080/api/v1/url_mgt/shorten/' \
+  -H 'X-API-Key: <key>' \
+  -H 'Content-Type: application/json' \
+  -d '{"original_url":"https://pkg.go.dev/net/http"}'
+```
 
-`curl -X DELETE 'https://shrt-acc.onrender.com/api/v1/url_mgt/2' -H 'Content-Type: application/json' -H 'Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJJRCI6IjNiYzZkODQ3LWY5M2UtNDMyYS05NjcwLWZkOTFjYzRkZmY5YSIsIkVtYWlsIjoiZGxpb25AZ21haWwuY29tIn0.vQWYoUFs0_WZUIoBdvwms8iI3u_yqpQxPfAm5bLaJBc' -d '{"access_count":3}'`
+The response includes `short_url` (the slug) and `short_access` (the full link,
+built from `BASE_URL`).
 
+### Custom slug
 
+```bash
+curl -X POST 'http://localhost:8080/api/v1/url_mgt/custom/' \
+  -H 'X-API-Key: <key>' \
+  -H 'Content-Type: application/json' \
+  -d '{"original_url":"https://pkg.go.dev/net/http","short_url":"nethttp"}'
+```
 
+### Set expiry
+
+`time_unit` is one of `y`, `mo`, `d`, `h`, `m`, `s` (year, month, day, hour,
+minute, second). This one expires 40 seconds from now:
+
+```bash
+curl -X POST 'http://localhost:8080/api/v1/url_mgt/url_expiry/' \
+  -H 'X-API-Key: <key>' \
+  -H 'Content-Type: application/json' \
+  -d '{"time_unit":"s","time_value":40,"url_id":1}'
+```
+
+### List / filter your URLs
+
+```bash
+curl 'http://localhost:8080/api/v1/url_mgt/' -H 'X-API-Key: <key>'
+curl 'http://localhost:8080/api/v1/url_mgt/?id=1&short_url=nethttp' -H 'X-API-Key: <key>'
+```
+
+### Update / delete a URL
+
+```bash
+curl -X PATCH  'http://localhost:8080/api/v1/url_mgt/1' -H 'X-API-Key: <key>' -H 'Content-Type: application/json' -d '{"original_url":"https://go.dev"}'
+curl -X PUT    'http://localhost:8080/api/v1/url_mgt/1' -H 'X-API-Key: <key>' -H 'Content-Type: application/json' -d '{"original_url":"https://go.dev"}'
+curl -X DELETE 'http://localhost:8080/api/v1/url_mgt/1' -H 'X-API-Key: <key>'
+```
+
+### Follow a short link
+
+```bash
+curl -i 'http://localhost:8080/<slug>'
+```
+
+Redirects to the original URL and counts the visit.
+
+## Local development
+
+You need Go and a Postgres you can point at. Common tasks are in the
+[`Makefile`](Makefile):
+
+```bash
+make run          # run the server
+make fmt          # format the code
+make test         # run tests
+make migrate-up   # apply migrations
+make migrate-down # roll back the last migration
+make docker-up    # build and run the whole stack locally
+```
+
+Run `make help` to see everything.
+
+### Tests
+
+Tests run against a real database. Point them at a throwaway one and run:
+
+```bash
+export TEST_DATABASE_URL='postgres://sauser:sapass@localhost:5432/sadb_test?sslmode=disable'
+make test
+```
+
+The harness drops and recreates the schema, runs migrations, and clears the
+tables between tests. Without `TEST_DATABASE_URL` set, the database tests skip.

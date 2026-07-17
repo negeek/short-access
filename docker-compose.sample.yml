@@ -1,0 +1,54 @@
+# Self-host template. Copy this into your project as docker-compose.yml, drop a
+# .env next to it (see the variables below), then run: docker compose up -d
+#
+# It pulls the published image from Docker Hub, so there is nothing to build.
+# Pin a version instead of :latest once you know which one you want, e.g.
+# negeek/short-access:1.0.0
+services:
+  short-access-db:
+    image: postgres:14-alpine
+    container_name: short-access-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sauser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sapass}
+      POSTGRES_DB: ${POSTGRES_DB:-sadb}
+    volumes:
+      - short-access-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sauser} -d ${POSTGRES_DB:-sadb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Runs migrations once and exits. The engine waits for it to finish.
+  short-access-migrate:
+    image: negeek/short-access:latest
+    container_name: short-access-migrate
+    command: ["migrate", "up"]
+    env_file: .env
+    environment:
+      APP_ENV: docker
+      POSTGRES_HOST: short-access-db
+      POSTGRES_PORT: "5432"
+    depends_on:
+      short-access-db:
+        condition: service_healthy
+
+  short-access-engine:
+    image: negeek/short-access:latest
+    container_name: short-access-engine
+    env_file: .env
+    environment:
+      APP_ENV: docker
+      POSTGRES_HOST: short-access-db
+      POSTGRES_PORT: "5432"
+    ports:
+      - "8080:8080"
+    depends_on:
+      short-access-db:
+        condition: service_healthy
+      short-access-migrate:
+        condition: service_completed_successfully
+
+volumes:
+  short-access-db-data:
