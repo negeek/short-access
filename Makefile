@@ -9,6 +9,9 @@ DATABASE_URL ?= postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST
 MIGRATIONS_DIR := db/migrations
 
 TEST_DATABASE_URL ?= postgres://sauser:sapass@localhost:5444/sadb_test?sslmode=disable
+# Keep this out of the environment of `make test` so plain test runs still skip
+# the database tests. The test-integration target sets it explicitly.
+unexport TEST_DATABASE_URL
 
 .PHONY: help run build format lint test test-integration tidy migrate-up migrate-down migrate-create docker-up docker-down test-db-up test-db-down
 
