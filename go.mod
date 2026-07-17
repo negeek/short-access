@@ -1,6 +1,6 @@
 module github.com/negeek/short-access
 
-go 1.18
+go 1.24
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.0.0

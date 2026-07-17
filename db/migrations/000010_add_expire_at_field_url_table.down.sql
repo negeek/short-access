@@ -1,2 +1,0 @@
-ALTER TABLE urls
-DROP COLUMN expire_at;
