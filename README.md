@@ -1,6 +1,6 @@
 # Short-Access
 
-Short-Access is a self-hostable URL shortener with a small, friendly HTTP API.
+Short-Access is a self-hostable URL shortener with an easy-to-use API.
 You run it on your own machine or server, point your application at it, and it
 hands back short links — with expiry, custom slugs, visit counting, and API keys.
 
