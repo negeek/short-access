@@ -40,6 +40,22 @@ func TestShortenAndRedirect(t *testing.T) {
 	}
 }
 
+func TestUrlEndpointAcceptsBearerToken(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+	client := noRedirectClient()
+
+	token := signup(t, client, srv, "bearer@example.com", "secret123")
+
+	// The url endpoints accept a bearer token, not only an API key.
+	resp, env := request(t, client, srv, http.MethodPost, "/api/v1/url_mgt/shorten/",
+		map[string]string{"Authorization": "Bearer " + token},
+		map[string]string{"original_url": "https://example.com/bearer"})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("shorten with bearer token: got %d (%s)", resp.StatusCode, env.Message)
+	}
+}
+
 func TestCannotTouchAnotherUsersUrl(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()

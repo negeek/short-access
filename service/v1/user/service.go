@@ -75,12 +75,25 @@ func (s *Service) NewToken(ctx context.Context, in *User) (string, error) {
 	return token, nil
 }
 
-// Exists reports whether a user with this email is registered. The auth
-// middleware uses it to confirm a token still points at a real user.
-func (s *Service) Exists(ctx context.Context, email string) (bool, error) {
-	exists, err := s.users.EmailExists(ctx, email)
-	if err != nil {
-		return false, apperr.Internal(err)
+// Authenticate verifies a JWT and returns the id of the user it names, after
+// confirming that user still exists. It mirrors the api-key service's
+// Authenticate so the middleware treats both credentials the same way.
+func (s *Service) Authenticate(ctx context.Context, token string) (uuid.UUID, error) {
+	if token == "" {
+		return uuid.Nil, apperr.Unauthorized("Provide Auth Token")
 	}
-	return exists, nil
+
+	claim, err := utils.VerifyJwt(token)
+	if err != nil {
+		return uuid.Nil, apperr.Unauthorized("Invalid Token")
+	}
+
+	exists, err := s.users.EmailExists(ctx, claim.Email)
+	if err != nil {
+		return uuid.Nil, apperr.Internal(err)
+	}
+	if !exists {
+		return uuid.Nil, apperr.Unauthorized("Invalid User")
+	}
+	return claim.ID, nil
 }

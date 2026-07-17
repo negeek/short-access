@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/negeek/short-access/apperr"
 	apikeysvc "github.com/negeek/short-access/service/v1/apikey"
 	usersvc "github.com/negeek/short-access/service/v1/user"
 	"github.com/negeek/short-access/utils"
@@ -27,8 +28,10 @@ func UserID(ctx context.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
-// Authenticator guards routes. It offers two schemes: JWT for a signed-in user
-// managing their account, and API keys for an application calling the url API.
+// Authenticator guards routes. It supports two schemes: a JWT for a signed-in
+// user managing their account, and an API key for an application calling the
+// url API. The real work lives in the user and api-key services; the middleware
+// only pulls the credential out of the right header.
 type Authenticator struct {
 	users *usersvc.Service
 	keys  *apikeysvc.Service
@@ -38,51 +41,62 @@ func NewAuthenticator(users *usersvc.Service, keys *apikeysvc.Service) *Authenti
 	return &Authenticator{users: users, keys: keys}
 }
 
-// JWT checks the request's bearer token and confirms the user it names still
-// exists. Used for account and key management.
+// JWT accepts only a bearer token. Used for account and key management.
 func (a *Authenticator) JWT(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		header := r.Header.Get("Authorization")
-		if header == "" {
-			utils.JsonResponse(w, false, http.StatusUnauthorized, "Provide Auth Token", nil)
-			return
-		}
-
-		parts := strings.Split(header, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			utils.JsonResponse(w, false, http.StatusUnauthorized, "Invalid Authorisation Header", nil)
-			return
-		}
-
-		claim, err := utils.VerifyJwt(parts[1])
-		if err != nil {
-			utils.JsonResponse(w, false, http.StatusUnauthorized, "Invalid Token", nil)
-			return
-		}
-
-		exists, err := a.users.Exists(r.Context(), claim.Email)
+		token, err := bearerToken(r)
 		if err != nil {
 			utils.RespondError(w, err)
 			return
 		}
-		if !exists {
-			utils.JsonResponse(w, false, http.StatusUnauthorized, "Invalid User", nil)
-			return
-		}
-
-		next.ServeHTTP(w, r.WithContext(WithUser(r.Context(), claim.ID)))
-	})
-}
-
-// APIKey checks the X-API-Key header and resolves it to its owner. Used for the
-// url endpoints an application calls.
-func (a *Authenticator) APIKey(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userID, err := a.keys.Authenticate(r.Context(), r.Header.Get("X-API-Key"))
+		userID, err := a.users.Authenticate(r.Context(), token)
 		if err != nil {
 			utils.RespondError(w, err)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(WithUser(r.Context(), userID)))
 	})
+}
+
+// Either accepts whichever credential the caller sends: an X-API-Key header
+// (an application) or a bearer token (a signed-in user). The API key is checked
+// first when both are present.
+func (a *Authenticator) Either(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var userID uuid.UUID
+		var err error
+
+		switch {
+		case r.Header.Get("X-API-Key") != "":
+			userID, err = a.keys.Authenticate(r.Context(), r.Header.Get("X-API-Key"))
+		case r.Header.Get("Authorization") != "":
+			var token string
+			if token, err = bearerToken(r); err == nil {
+				userID, err = a.users.Authenticate(r.Context(), token)
+			}
+		default:
+			err = apperr.Unauthorized("Provide an API key or bearer token")
+		}
+
+		if err != nil {
+			utils.RespondError(w, err)
+			return
+		}
+		next.ServeHTTP(w, r.WithContext(WithUser(r.Context(), userID)))
+	})
+}
+
+// bearerToken pulls the token out of an "Authorization: Bearer <token>" header.
+// A missing header yields an empty token so the service can report it uniformly;
+// a malformed header is rejected here.
+func bearerToken(r *http.Request) (string, error) {
+	header := r.Header.Get("Authorization")
+	if header == "" {
+		return "", nil
+	}
+	parts := strings.Split(header, " ")
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return "", apperr.Unauthorized("Invalid Authorisation Header")
+	}
+	return parts[1], nil
 }
