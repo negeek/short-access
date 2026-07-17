@@ -1,4 +1,7 @@
-package server_test
+// Package integration_tests holds end-to-end tests that drive the assembled
+// HTTP stack against a real database. Unit tests live next to the code they
+// cover; these cross-cutting flows live here.
+package integration_tests
 
 import (
 	"bytes"
@@ -7,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strconv"
 	"testing"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -137,99 +139,4 @@ func shorten(t *testing.T, client *http.Client, srv *httptest.Server, key, origi
 		t.Fatal("shorten: no short url returned")
 	}
 	return u.Id, u.ShortUrl
-}
-
-func TestShortenAndRedirect(t *testing.T) {
-	srv := newServer(t)
-	defer srv.Close()
-	client := noRedirectClient()
-
-	token := signup(t, client, srv, "a@example.com", "secret123")
-	key := createKey(t, client, srv, token)
-	_, shortURL := shorten(t, client, srv, key, "https://example.com/page")
-
-	// Following the slug redirects to the original url.
-	resp, _ := request(t, client, srv, http.MethodGet, "/"+shortURL, nil, nil)
-	if resp.StatusCode != http.StatusTemporaryRedirect {
-		t.Fatalf("redirect: got status %d", resp.StatusCode)
-	}
-	if loc := resp.Header.Get("Location"); loc != "https://example.com/page" {
-		t.Fatalf("redirect: got location %q", loc)
-	}
-
-	// The visit is counted.
-	resp, env := request(t, client, srv, http.MethodGet, "/api/v1/url_mgt/",
-		map[string]string{"X-API-Key": key}, nil)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("list: got status %d", resp.StatusCode)
-	}
-	var list []struct {
-		AccessCount int `json:"access_count"`
-	}
-	json.Unmarshal(env.Data, &list)
-	if len(list) != 1 || list[0].AccessCount != 1 {
-		t.Fatalf("expected one url with access_count 1, got %+v", list)
-	}
-}
-
-func TestRevokedKeyIsRejected(t *testing.T) {
-	srv := newServer(t)
-	defer srv.Close()
-	client := noRedirectClient()
-
-	token := signup(t, client, srv, "b@example.com", "secret123")
-	key := createKey(t, client, srv, token)
-
-	// Find the key's id.
-	_, env := request(t, client, srv, http.MethodGet, "/api/v1/user_mgt/api_keys/",
-		map[string]string{"Authorization": "Bearer " + token}, nil)
-	var keys []struct {
-		Id int `json:"id"`
-	}
-	json.Unmarshal(env.Data, &keys)
-	if len(keys) != 1 {
-		t.Fatalf("expected one key, got %d", len(keys))
-	}
-
-	// Revoke it.
-	resp, env := request(t, client, srv, http.MethodPost,
-		"/api/v1/user_mgt/api_keys/"+strconv.Itoa(keys[0].Id)+"/revoke",
-		map[string]string{"Authorization": "Bearer " + token}, nil)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("revoke: got %d (%s)", resp.StatusCode, env.Message)
-	}
-
-	// The revoked key can no longer shorten.
-	resp, _ = request(t, client, srv, http.MethodPost, "/api/v1/url_mgt/shorten/",
-		map[string]string{"X-API-Key": key}, map[string]string{"original_url": "https://example.com"})
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("shorten with revoked key: expected 401, got %d", resp.StatusCode)
-	}
-}
-
-func TestCannotTouchAnotherUsersUrl(t *testing.T) {
-	srv := newServer(t)
-	defer srv.Close()
-	client := noRedirectClient()
-
-	ownerToken := signup(t, client, srv, "owner@example.com", "secret123")
-	ownerKey := createKey(t, client, srv, ownerToken)
-	id, _ := shorten(t, client, srv, ownerKey, "https://owner.example.com")
-
-	otherToken := signup(t, client, srv, "other@example.com", "secret123")
-	otherKey := createKey(t, client, srv, otherToken)
-
-	// A different user cannot delete the owner's url.
-	resp, _ := request(t, client, srv, http.MethodDelete, "/api/v1/url_mgt/"+strconv.Itoa(id),
-		map[string]string{"X-API-Key": otherKey}, nil)
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Fatalf("cross-user delete: expected 400, got %d", resp.StatusCode)
-	}
-
-	// The owner still can.
-	resp, _ = request(t, client, srv, http.MethodDelete, "/api/v1/url_mgt/"+strconv.Itoa(id),
-		map[string]string{"X-API-Key": ownerKey}, nil)
-	if resp.StatusCode != http.StatusNoContent {
-		t.Fatalf("owner delete: expected 204, got %d", resp.StatusCode)
-	}
 }
