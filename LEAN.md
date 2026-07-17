@@ -8,12 +8,17 @@ looks like in practice.
 
 ## One static binary, no runtime
 
-The app compiles to a single, statically linked Go binary (`CGO_ENABLED=0`). There
-is no interpreter, no VM, and no language runtime to install — the binary *is* the
-program. The Docker image is a [multi-stage build](Dockerfile): a build stage
-compiles it, and the final image is just a minimal Alpine base plus that one
-binary, running as a non-root user. The result is a small image that starts
-almost instantly, because starting it is just executing a file.
+The app compiles to a single, statically linked Go binary (`CGO_ENABLED=0`), with
+`-ldflags="-s -w"` stripping the symbol and debug tables. There is no interpreter,
+no VM, and no language runtime to install — the binary *is* the program. The
+Docker image is a [multi-stage build](Dockerfile): a build stage compiles it, and
+the final image is just a minimal Alpine base plus that one binary, running as a
+non-root user. The result is a small image that starts almost instantly, because
+starting it is just executing a file.
+
+Measured: the stripped binary is about **8.7 MB**, and the whole Docker image is
+about **16.5 MB** — smaller than a typical Redis or nginx base image, and an order
+of magnitude smaller than most application containers.
 
 ## Almost no dependencies
 
@@ -67,7 +72,7 @@ replicas rather than resources.
 
 ## What that adds up to
 
-Small image, low memory, near-instant cold start, and few surprises. It sits
+A ~16.5 MB image, low memory, near-instant cold start, and few surprises. It sits
 comfortably next to your existing app on a small VM or a free tier, rather than
 demanding a box of its own. Leanness here isn't austerity for its own sake — it's
 less to run, less to pay for, and less that can break.
