@@ -27,7 +27,6 @@ services:
     command: ["migrate", "up"]
     env_file: .env
     environment:
-      APP_ENV: docker
       POSTGRES_HOST: short-access-db
       POSTGRES_PORT: "5432"
     depends_on:
@@ -39,7 +38,6 @@ services:
     container_name: short-access-engine
     env_file: .env
     environment:
-      APP_ENV: docker
       POSTGRES_HOST: short-access-db
       POSTGRES_PORT: "5432"
     ports:

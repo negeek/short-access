@@ -101,14 +101,11 @@ func runMigrate(args []string) {
 	}
 }
 
-// loadEnv loads variables from a local .env file when running in dev mode.
+// loadEnv reads a local .env file if one is present (handy for development).
+// In Docker there is no .env file and the settings come from the environment,
+// which already takes precedence over anything a .env file would set.
 func loadEnv() {
-	if os.Getenv("APP_ENV") == "dev" {
-		if err := godotenv.Load(".env"); err != nil {
-			slog.Error("could not load .env file", "error", err)
-			os.Exit(1)
-		}
-	}
+	_ = godotenv.Load()
 }
 
 // databaseURL builds the Postgres connection string from the environment.

@@ -21,7 +21,6 @@ services:
     command: ["migrate", "up"]
     env_file: .env
     environment:
-      APP_ENV: docker
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
     depends_on:
@@ -32,7 +31,6 @@ services:
     build: .
     env_file: .env
     environment:
-      APP_ENV: docker
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
     ports:
