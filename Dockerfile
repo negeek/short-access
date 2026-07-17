@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # --- build stage ---
-FROM golang:1.24-alpine AS build
+# Runs on the builder's native architecture; Go cross-compiles to the target one,
+# which is much faster than emulating the whole toolchain.
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS build
 
 WORKDIR /app
 
@@ -11,9 +13,11 @@ RUN go mod download
 
 COPY . .
 
-# Build a static binary. -s -w strip the symbol and debug tables to keep it small.
-# Migrations are embedded, so the image needs nothing else.
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /short-access ./cmd/short-access
+# Build a static binary for the target platform. -s -w strip the symbol and debug
+# tables to keep it small. Migrations are embedded, so the image needs nothing else.
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w" -o /short-access ./cmd/short-access
 
 # --- run stage ---
 FROM alpine:3.20
