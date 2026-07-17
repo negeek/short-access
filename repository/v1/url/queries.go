@@ -1,133 +1,104 @@
 package url
 
-import(
-	//"fmt"
+import (
 	"context"
-	"github.com/negeek/short-access/utils"
-	"github.com/negeek/short-access/db"
+
 	"github.com/jackc/pgx/v4"
-	"time"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/negeek/short-access/utils"
 )
 
-func (u *Url) Create() error {
-	query,queryValues,err:=utils.CRUDQueryBuild(u,u.TableName(),"create")
+// Repository runs url queries against the database pool it is given.
+type Repository struct {
+	db *pgxpool.Pool
+}
+
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db}
+}
+
+// scanTargets lists the columns FindBy* and UserURLs read, in order.
+func scanTargets(u *Url) []interface{} {
+	return []interface{}{
+		&u.Id, &u.OriginalUrl, &u.ShortUrl, &u.ShortAccess,
+		&u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated,
+	}
+}
+
+func (repo *Repository) Create(ctx context.Context, u *Url) error {
+	query, values, err := utils.CRUDQueryBuild(u, u.TableName(), "create")
 	if err != nil {
 		return err
 	}
-	query+="RETURNING id"
-	err2 := db.PostgreSQLDB.QueryRow(context.Background(), query, queryValues...).Scan(&u.Id)
-	if err2 != nil {
-		return err2
-	}
-	return nil
+	query += " RETURNING id"
+	return repo.db.QueryRow(ctx, query, values...).Scan(&u.Id)
 }
 
-func (u *Url) Update() error{
-	// dyanmically update url table
-	query,queryValues,err:=utils.CRUDQueryBuild(u,u.TableName(),"update")
+func (repo *Repository) Update(ctx context.Context, u *Url) error {
+	query, values, err := utils.CRUDQueryBuild(u, u.TableName(), "update")
 	if err != nil {
 		return err
 	}
-	_,err2 := db.PostgreSQLDB.Exec(context.Background(), query, queryValues...)
-	if err2 != nil {
-		return err2
-	}
-	return nil
+	_, err = repo.db.Exec(ctx, query, values...)
+	return err
 }
 
-func (u *Url) Delete() error {
-	query,queryValues,err:=utils.CRUDQueryBuild(u,u.TableName(),"delete")
+func (repo *Repository) Delete(ctx context.Context, u *Url) error {
+	query, values, err := utils.CRUDQueryBuild(u, u.TableName(), "delete")
 	if err != nil {
 		return err
 	}
-	_,err2 := db.PostgreSQLDB.Exec(context.Background(), query, queryValues...)
-	if err2 != nil {
-		return err2
-	}
-	return nil
-	
+	_, err = repo.db.Exec(ctx, query, values...)
+	return err
 }
 
-func(u *Url) FindById()(error,bool){
-	query,queryValues,err:=utils.CRUDQueryBuild(u,u.TableName(),"retrieve")
+// FindByID loads a url by its id. The bool reports whether a row was found.
+func (repo *Repository) FindByID(ctx context.Context, u *Url) (bool, error) {
+	query, values, err := utils.CRUDQueryBuild(u, u.TableName(), "retrieve")
 	if err != nil {
-		return err, false
+		return false, err
 	}
-	err2:=db.PostgreSQLDB.QueryRow(context.Background(), query,queryValues...).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl,&u.ShortAccess, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
-	if err2 != nil {
-		if err2 == pgx.ErrNoRows {
-			return nil, false
-		}
-		return err,false
-	}
-	return nil, true
+	return repo.queryOne(ctx, u, query, values...)
 }
 
-func (u *Url) FindByOriginalUrl()(error,bool){
-	query:="SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE original_url=$1 and user_id=$2"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.OriginalUrl, u.UserId).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl,&u.ShortAccess, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
+func (repo *Repository) FindByOriginalURL(ctx context.Context, u *Url) (bool, error) {
+	query := "SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE original_url=$1 and user_id=$2"
+	return repo.queryOne(ctx, u, query, u.OriginalUrl, u.UserId)
+}
+
+func (repo *Repository) FindByShortURL(ctx context.Context, u *Url) (bool, error) {
+	query := "SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE short_url=$1"
+	return repo.queryOne(ctx, u, query, u.ShortUrl)
+}
+
+// queryOne runs a single-row select and scans it into u. A missing row is not
+// treated as an error: it returns (false, nil).
+func (repo *Repository) queryOne(ctx context.Context, u *Url, query string, args ...interface{}) (bool, error) {
+	err := repo.db.QueryRow(ctx, query, args...).Scan(scanTargets(u)...)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, false
+			return false, nil
 		}
-		return err,false
+		return false, err
 	}
-	return nil, true
+	return true, nil
 }
 
-func (u *Url) FindByShortUrl()(error,bool){
-	query:="SELECT id,original_url,short_url,short_access,is_custom,access_count,expire_at,date_created,date_updated FROM urls WHERE short_url=$1"
-	err:=db.PostgreSQLDB.QueryRow(context.Background(), query, u.ShortUrl).Scan(&u.Id, &u.OriginalUrl, &u.ShortUrl,&u.ShortAccess, &u.IsCustom, &u.AccessCount, &u.ExpireAt, &u.DateCreated, &u.DateUpdated)
+// UserURLs runs a caller-built filter query and returns the matching urls.
+func (repo *Repository) UserURLs(ctx context.Context, query string, values []interface{}) ([]Url, error) {
+	rows, err := repo.db.Query(ctx, query, values...)
 	if err != nil {
-		if err == pgx.ErrNoRows{
-			return nil, false
-		}
-		return err,false
-	}
-	return nil, true
-}
-
-func (u *Url) UserUrls(query string, queryValues []interface{})([]Url,error){
-	rows,err:=db.PostgreSQLDB.Query(context.Background(), query, queryValues...)
-	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	defer rows.Close()
-	var userUrls []Url
+
+	var urls []Url
 	for rows.Next() {
-		var url Url
-		err := rows.Scan(&url.Id, &url.OriginalUrl, &url.ShortUrl,&url.ShortAccess, &url.IsCustom, &url.AccessCount, &url.ExpireAt, &url.DateCreated, &url.DateUpdated)
-		if err != nil {
+		var u Url
+		if err := rows.Scan(scanTargets(&u)...); err != nil {
 			return nil, err
 		}
-		userUrls = append(userUrls, url)
+		urls = append(urls, u)
 	}
-	return userUrls,nil
-}
-
-
-func (u *Url) TestDelete() error {
-	// for test purpose only
-	if u.ShortUrl!=""{
-		query:="DELETE FROM urls WHERE short_url=$1"
-		_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.ShortUrl)
-		if err != nil {
-			return err
-		}
-		
-	}else{
-		query:="DELETE FROM urls WHERE original_url=$1"
-		_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.OriginalUrl)
-		if err != nil {
-			return err
-		}
-	}
-	return nil	
-}
-
-func (u *Url) Expired() bool{
-	if u.ExpireAt.IsZero(){
-		return false
-	}
-	return u.ExpireAt.Before(time.Now().UTC())
+	return urls, rows.Err()
 }

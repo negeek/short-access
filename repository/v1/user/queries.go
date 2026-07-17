@@ -1,72 +1,62 @@
 package user
 
-import(
-	//"fmt"
+import (
 	"context"
-	"github.com/negeek/short-access/utils"
-	"github.com/negeek/short-access/db"
+
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/negeek/short-access/utils"
 )
 
-// create a new user
-func (u *User) Create() error {
-	// set the date fields
-	terr:=utils.Time(u,true)
-	if terr != nil {
-		return terr
-	}
-	// insert user detail into users table in db
-	query:="INSERT INTO users (id, password, email, date_created, date_updated) VALUES ($1, $2, $3, $4, $5)"
-	_, ierr := db.PostgreSQLDB.Exec(context.Background(),query,u.Id, u.Password, u.Email, u.DateCreated, u.DateUpdated)
-	if ierr != nil {
-		return ierr
-	}
-	return nil
+// Repository runs user queries against the database pool it is given.
+type Repository struct {
+	db *pgxpool.Pool
 }
 
-// check if email exists
-func (u *User) EmailExists() bool{
-	var emailExists bool
-	query:="SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
-	err:= db.PostgreSQLDB.QueryRow(context.Background(),query,u.Email).Scan(&emailExists)
-	if err !=nil{
-		return false
-	}
-	return emailExists
+func NewRepository(db *pgxpool.Pool) *Repository {
+	return &Repository{db: db}
 }
 
-// find user by email. email is also unique like id
-func (u *User) FindByEmail() (error, bool) {
-	query:="SELECT id, email, date_created, date_updated FROM users WHERE email = $1"
-	err := db.PostgreSQLDB.QueryRow(context.Background(),query,u.Email).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, false
-		}
-		return err,false
-	}
-	return nil, true
-}
-
-func (u *User) Authenticate() (error, bool) {
-	query:="SELECT id, email, date_created, date_updated FROM users WHERE email = $1 and password = $2"
-	err := db.PostgreSQLDB.QueryRow(context.Background(),query,u.Email,u.Password).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, false
-		}
-		return err,false
-	}
-	return nil, true
-}
-
-func (u *User) TestDelete() error {
-	// test purpose only
-	query:="DELETE FROM users WHERE email = $1"
-	_, err := db.PostgreSQLDB.Exec(context.Background(), query, u.Email)
-	if err != nil {
+func (repo *Repository) Create(ctx context.Context, u *User) error {
+	if err := utils.Time(u, true); err != nil {
 		return err
 	}
-	return nil
+	query := "INSERT INTO users (id, password, email, date_created, date_updated) VALUES ($1, $2, $3, $4, $5)"
+	_, err := repo.db.Exec(ctx, query, u.Id, u.Password, u.Email, u.DateCreated, u.DateUpdated)
+	return err
 }
 
+// EmailExists reports whether a user with this email is already registered.
+func (repo *Repository) EmailExists(ctx context.Context, email string) (bool, error) {
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"
+	err := repo.db.QueryRow(ctx, query, email).Scan(&exists)
+	return exists, err
+}
+
+// FindByEmail loads a user by email. The bool reports whether a row was found.
+func (repo *Repository) FindByEmail(ctx context.Context, u *User) (bool, error) {
+	query := "SELECT id, email, date_created, date_updated FROM users WHERE email = $1"
+	err := repo.db.QueryRow(ctx, query, u.Email).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+// Authenticate loads a user that matches the given email and password. The bool
+// reports whether a matching user was found.
+func (repo *Repository) Authenticate(ctx context.Context, u *User) (bool, error) {
+	query := "SELECT id, email, date_created, date_updated FROM users WHERE email = $1 and password = $2"
+	err := repo.db.QueryRow(ctx, query, u.Email, u.Password).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
