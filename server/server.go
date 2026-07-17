@@ -39,6 +39,7 @@ func NewRouter(pool *pgxpool.Pool) http.Handler {
 	router := mux.NewRouter()
 	router.Use(v1middlewares.CORS)
 	router.HandleFunc("/", api.Home).Methods("GET")
+	router.HandleFunc("/healthz", api.Health(pool)).Methods("GET")
 	router.HandleFunc("/{slug}", urlHandler.UrlRedirect).Methods("GET")
 	routes.V1routes(router.StrictSlash(true), urlHandler, userHandler, apiKeyHandler, auth)
 	return router

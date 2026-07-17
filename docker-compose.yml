@@ -40,6 +40,11 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Throwaway database for running the test suite. It is behind the "test"
   # profile so a plain `docker compose up` never starts it. Bring it up with:
