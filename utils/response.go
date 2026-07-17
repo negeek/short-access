@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/negeek/short-access/apperr"
@@ -31,9 +32,16 @@ func JsonResponse(w http.ResponseWriter, success bool, statusCode int, message s
 func RespondError(w http.ResponseWriter, err error) {
 	var appErr *apperr.Error
 	if errors.As(err, &appErr) {
+		// Client mistakes (bad request, not found, ...) are expected, so we
+		// don't log them. Only our own failures are worth a log line, with the
+		// real cause kept server-side.
+		if appErr.Kind == apperr.KindInternal {
+			slog.Error("request failed", "error", appErr.Unwrap())
+		}
 		JsonResponse(w, false, statusFor(appErr.Kind), appErr.Message, nil)
 		return
 	}
+	slog.Error("unexpected error", "error", err)
 	JsonResponse(w, false, http.StatusInternalServerError, "Something went wrong. Try again.", nil)
 }
 

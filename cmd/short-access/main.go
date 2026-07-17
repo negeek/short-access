@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,9 +28,12 @@ import (
 )
 
 func main() {
+	setupLogger()
+
 	if os.Getenv("APP_ENV") == "dev" {
 		if err := godotenv.Load(".env"); err != nil {
-			log.Fatal("Error loading .env file")
+			slog.Error("could not load .env file", "error", err)
+			os.Exit(1)
 		}
 	}
 
@@ -42,10 +46,11 @@ func main() {
 		os.Getenv("POSTGRES_PORT"),
 		os.Getenv("POSTGRES_DB"),
 	)
-	fmt.Println("connecting to db")
+	slog.Info("connecting to database")
 	pool, err := db.Connect(dbURL)
 	if err != nil {
-		log.Fatal(err)
+		slog.Error("could not connect to database", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 
@@ -75,9 +80,9 @@ func main() {
 
 	// Run the server in the background so we can wait for a shutdown signal.
 	go func() {
-		fmt.Println("start server")
-		if err := server.ListenAndServe(); err != nil {
-			fmt.Println(err)
+		slog.Info("server started", "addr", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("server stopped unexpectedly", "error", err)
 		}
 	}()
 
@@ -86,10 +91,25 @@ func main() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	<-c
 
+	slog.Info("shutting down")
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	server.Shutdown(ctx)
-
-	fmt.Println("shutting down")
 	os.Exit(0)
+}
+
+// setupLogger installs a structured logger as the default. The level comes from
+// the LOG_LEVEL env var (debug, info, warn, error) and defaults to info.
+func setupLogger() {
+	level := slog.LevelInfo
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		level = slog.LevelDebug
+	case "warn":
+		level = slog.LevelWarn
+	case "error":
+		level = slog.LevelError
+	}
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	slog.SetDefault(slog.New(handler))
 }
