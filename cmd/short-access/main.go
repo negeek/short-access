@@ -15,14 +15,17 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/negeek/short-access/api"
+	"github.com/negeek/short-access/api/v1/apikeys"
 	"github.com/negeek/short-access/api/v1/urls"
 	"github.com/negeek/short-access/api/v1/users"
 	"github.com/negeek/short-access/db"
 	v1middlewares "github.com/negeek/short-access/middlewares/v1"
+	apikeyrepo "github.com/negeek/short-access/repository/v1/apikey"
 	numberrepo "github.com/negeek/short-access/repository/v1/number"
 	urlrepo "github.com/negeek/short-access/repository/v1/url"
 	userrepo "github.com/negeek/short-access/repository/v1/user"
 	routes "github.com/negeek/short-access/routes/v1"
+	apikeyservice "github.com/negeek/short-access/service/v1/apikey"
 	urlservice "github.com/negeek/short-access/service/v1/url"
 	userservice "github.com/negeek/short-access/service/v1/user"
 )
@@ -61,14 +64,16 @@ func main() {
 	))
 	userService := userservice.NewService(userrepo.NewRepository(pool))
 	userHandler := users.NewHandler(userService)
-	auth := v1middlewares.NewAuthenticator(userService)
+	apiKeyService := apikeyservice.NewService(apikeyrepo.NewRepository(pool))
+	apiKeyHandler := apikeys.NewHandler(apiKeyService)
+	auth := v1middlewares.NewAuthenticator(userService, apiKeyService)
 
 	// Routing.
 	router := mux.NewRouter()
 	router.Use(v1middlewares.CORS)
 	router.HandleFunc("/", api.Home).Methods("GET")
 	router.HandleFunc("/{slug}", urlHandler.UrlRedirect).Methods("GET")
-	routes.V1routes(router.StrictSlash(true), urlHandler, userHandler, auth)
+	routes.V1routes(router.StrictSlash(true), urlHandler, userHandler, apiKeyHandler, auth)
 
 	server := &http.Server{
 		Addr:         ":8080",

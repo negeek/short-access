@@ -7,7 +7,7 @@ import (
 
 func Routes(r *mux.Router, h *Handler, auth *v1middlewares.Authenticator) {
 	router := r.PathPrefix("/url_mgt").Subrouter()
-	router.Use(auth.Middleware)
+	router.Use(auth.APIKey)
 	router.HandleFunc("/shorten/", h.Shorten).Methods("POST")
 	router.HandleFunc("/custom/", h.CustomUrl).Methods("POST")
 	router.HandleFunc("/url_expiry/", h.UrlExpiry).Methods("POST")

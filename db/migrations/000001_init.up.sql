@@ -27,3 +27,14 @@ CREATE TABLE IF NOT EXISTS numbers (
     date_created TIMESTAMP DEFAULT now(),
     date_updated TIMESTAMP DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id           serial PRIMARY KEY,
+    user_id      uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+    key_hash     text NOT NULL UNIQUE,
+    name         text DEFAULT '',
+    revoked      boolean DEFAULT false,
+    expire_at    TIMESTAMP,
+    date_created TIMESTAMP DEFAULT now(),
+    date_updated TIMESTAMP DEFAULT now()
+);
