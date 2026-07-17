@@ -17,11 +17,12 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
+// Create stores a new user. u.Password is expected to already be hashed.
 func (repo *Repository) Create(ctx context.Context, u *User) error {
 	if err := utils.Time(u, true); err != nil {
 		return err
 	}
-	query := "INSERT INTO users (id, password, email, date_created, date_updated) VALUES ($1, $2, $3, $4, $5)"
+	query := "INSERT INTO users (id, password_hash, email, date_created, date_updated) VALUES ($1, $2, $3, $4, $5)"
 	_, err := repo.db.Exec(ctx, query, u.Id, u.Password, u.Email, u.DateCreated, u.DateUpdated)
 	return err
 }
@@ -34,24 +35,11 @@ func (repo *Repository) EmailExists(ctx context.Context, email string) (bool, er
 	return exists, err
 }
 
-// FindByEmail loads a user by email. The bool reports whether a row was found.
+// FindByEmail loads a user by email, including the stored password hash so the
+// service can verify a login. The bool reports whether a row was found.
 func (repo *Repository) FindByEmail(ctx context.Context, u *User) (bool, error) {
-	query := "SELECT id, email, date_created, date_updated FROM users WHERE email = $1"
-	err := repo.db.QueryRow(ctx, query, u.Email).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
-}
-
-// Authenticate loads a user that matches the given email and password. The bool
-// reports whether a matching user was found.
-func (repo *Repository) Authenticate(ctx context.Context, u *User) (bool, error) {
-	query := "SELECT id, email, date_created, date_updated FROM users WHERE email = $1 and password = $2"
-	err := repo.db.QueryRow(ctx, query, u.Email, u.Password).Scan(&u.Id, &u.Email, &u.DateCreated, &u.DateUpdated)
+	query := "SELECT id, email, password_hash, date_created, date_updated FROM users WHERE email = $1"
+	err := repo.db.QueryRow(ctx, query, u.Email).Scan(&u.Id, &u.Email, &u.Password, &u.DateCreated, &u.DateUpdated)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return false, nil

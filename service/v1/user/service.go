@@ -36,6 +36,12 @@ func (s *Service) SignUp(ctx context.Context, in *User) (string, error) {
 		return "", apperr.BadRequest("Email already exist")
 	}
 
+	hash, err := utils.HashPassword(in.Password)
+	if err != nil {
+		return "", apperr.Internal(err)
+	}
+	in.Password = hash
+
 	if err := s.users.Create(ctx, in); err != nil {
 		return "", apperr.Internal(err)
 	}
@@ -49,15 +55,20 @@ func (s *Service) SignUp(ctx context.Context, in *User) (string, error) {
 
 // NewToken checks the given credentials and returns a fresh auth token.
 func (s *Service) NewToken(ctx context.Context, in *User) (string, error) {
-	ok, err := s.users.Authenticate(ctx, in)
+	plaintext := in.Password
+
+	stored := &User{Email: in.Email}
+	found, err := s.users.FindByEmail(ctx, stored)
 	if err != nil {
 		return "", apperr.Internal(err)
 	}
-	if !ok {
+	// Same message whether the email is unknown or the password is wrong, so we
+	// don't reveal which emails are registered.
+	if !found || !utils.CheckPassword(stored.Password, plaintext) {
 		return "", apperr.BadRequest("Something Went Wrong. Check your email and password.")
 	}
 
-	token, err := utils.CreateJwtToken(in.Id, in.Email)
+	token, err := utils.CreateJwtToken(stored.Id, stored.Email)
 	if err != nil {
 		return "", apperr.Internal(err)
 	}
