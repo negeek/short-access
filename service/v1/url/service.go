@@ -279,8 +279,9 @@ func (s *Service) Redirect(ctx context.Context, slug string) (*Url, error) {
 		return nil, apperr.BadRequest("Url has expired")
 	}
 
-	target.AccessCount++
-	if err := s.urls.Update(ctx, target); err != nil {
+	// Count the visit with an atomic increment rather than a read-modify-write,
+	// so two simultaneous visits can't overwrite each other's count.
+	if err := s.urls.IncrementAccessCount(ctx, target.Id); err != nil {
 		return nil, apperr.Internal(err)
 	}
 	return target, nil

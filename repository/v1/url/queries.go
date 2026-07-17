@@ -53,6 +53,13 @@ func (repo *Repository) Delete(ctx context.Context, u *Url) error {
 	return err
 }
 
+// IncrementAccessCount bumps a url's visit count by one in a single atomic
+// statement, so concurrent redirects can't lose a count.
+func (repo *Repository) IncrementAccessCount(ctx context.Context, id int) error {
+	_, err := repo.db.Exec(ctx, "UPDATE urls SET access_count = access_count + 1 WHERE id = $1", id)
+	return err
+}
+
 // FindByID loads a url by its id. The bool reports whether a row was found.
 func (repo *Repository) FindByID(ctx context.Context, u *Url) (bool, error) {
 	query, values, err := utils.CRUDQueryBuild(u, u.TableName(), "retrieve")
