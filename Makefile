@@ -31,10 +31,10 @@ lint: ## Run the linter (needs golangci-lint installed)
 	golangci-lint run
 
 test: ## Run all tests (database tests skip unless TEST_DATABASE_URL is set)
-	go test ./...
+	go test ./... -v
 
 test-integration: ## Run tests against the local test database (run test-db-up first)
-	TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test ./...
+	TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test ./... -v
 
 tidy: ## Tidy up go.mod and go.sum
 	go mod tidy
