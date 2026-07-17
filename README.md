@@ -7,9 +7,9 @@ hands back short links — with expiry, custom slugs, visit counting, and API ke
 It is built to be lean, and that is the whole point: wanting to shorten a few
 URLs shouldn't mean standing up a heavy service that eats into your
 infrastructure. Staying lean keeps the compiled binary small, startup close to
-instant, and memory use low, so a single modest container comfortably serves a
-lot of redirects without asking much of the box it runs on. Curious how it pulls
-that off? See [how it stays lean](LEAN.md).
+instant, and memory use low, so a single modest container — the whole image comes
+in under 20 MB — comfortably serves a lot of redirects without asking much of the
+box it runs on. Curious how it pulls that off? See [how it stays lean](LEAN.md).
 
 ## How auth works
 
