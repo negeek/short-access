@@ -1,0 +1,292 @@
+openapi: 3.0.3
+info:
+  title: Short-Access API
+  version: "1.0"
+  description: >
+    A self-hosted URL shortener. Sign up to get a JWT, create an API key with it,
+    then call the url endpoints with either the API key (X-API-Key) or the JWT
+    (Authorization: Bearer).
+
+servers:
+  - url: http://localhost:8080
+    description: Local instance
+
+tags:
+  - name: users
+    description: Sign up and log in
+  - name: api-keys
+    description: Manage API keys (JWT required)
+  - name: urls
+    description: Shorten and manage urls (API key or JWT)
+  - name: misc
+    description: Redirect and health
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Response:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: {}
+    Url:
+      type: object
+      properties:
+        id: { type: integer }
+        original_url: { type: string }
+        short_url: { type: string }
+        short_access: { type: string }
+        is_custom: { type: boolean }
+        access_count: { type: integer }
+        expire_at: { type: string, format: date-time }
+        date_created: { type: string, format: date-time }
+        date_updated: { type: string, format: date-time }
+    ApiKey:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        revoked: { type: boolean }
+        expire_at: { type: string, format: date-time, nullable: true }
+        date_created: { type: string, format: date-time }
+        date_updated: { type: string, format: date-time }
+    UrlPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Url" }
+        limit: { type: integer }
+        offset: { type: integer }
+        count: { type: integer }
+        has_more: { type: boolean }
+    Credentials:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+paths:
+  /api/v1/user_mgt/join/:
+    post:
+      tags: [users]
+      summary: Sign up
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "201": { description: Created, returns a JWT }
+
+  /api/v1/user_mgt/new_token/:
+    post:
+      tags: [users]
+      summary: Log in for a new JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Credentials" }
+      responses:
+        "201": { description: Returns a JWT }
+
+  /api/v1/user_mgt/api_keys/:
+    post:
+      tags: [api-keys]
+      summary: Create an API key (raw key returned once)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                expire_at: { type: string, format: date-time, nullable: true }
+      responses:
+        "201": { description: Created }
+    get:
+      tags: [api-keys]
+      summary: List your API keys
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: List of keys
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Response"
+                  - properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/ApiKey" }
+
+  /api/v1/user_mgt/api_keys/{id}:
+    delete:
+      tags: [api-keys]
+      summary: Delete an API key
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  /api/v1/user_mgt/api_keys/{id}/revoke:
+    post:
+      tags: [api-keys]
+      summary: Revoke an API key
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Revoked }
+        "404": { description: Not found }
+
+  /api/v1/url_mgt/shorten/:
+    post:
+      tags: [urls]
+      summary: Shorten a url (auto slug)
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [original_url]
+              properties:
+                original_url: { type: string }
+                time_unit:
+                  type: string
+                  description: "Optional expiry unit (with time_value): y, mo, d, h, m, s"
+                time_value:
+                  type: integer
+                  description: Optional expiry amount (with time_unit)
+      responses:
+        "201": { description: Created }
+
+  /api/v1/url_mgt/custom/:
+    post:
+      tags: [urls]
+      summary: Shorten with a chosen slug
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [original_url, short_url]
+              properties:
+                original_url: { type: string }
+                short_url: { type: string }
+                time_unit: { type: string }
+                time_value: { type: integer }
+      responses:
+        "201": { description: Created }
+
+  /api/v1/url_mgt/url_expiry/:
+    post:
+      tags: [urls]
+      summary: Set a url's expiry
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url_id, time_unit, time_value]
+              properties:
+                url_id: { type: integer }
+                time_unit: { type: string }
+                time_value: { type: integer }
+      responses:
+        "200": { description: Updated }
+
+  /api/v1/url_mgt/:
+    get:
+      tags: [urls]
+      summary: List / filter your urls (paginated)
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 20, maximum: 100 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+        - { name: id, in: query, schema: { type: integer } }
+        - { name: short_url, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: A page of urls
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Response"
+                  - properties:
+                      data: { $ref: "#/components/schemas/UrlPage" }
+
+  /api/v1/url_mgt/{id}:
+    patch:
+      tags: [urls]
+      summary: Update some fields of a url
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Url" }
+      responses:
+        "200": { description: Updated }
+    put:
+      tags: [urls]
+      summary: Replace a url
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Url" }
+      responses:
+        "200": { description: Updated }
+    delete:
+      tags: [urls]
+      summary: Delete a url
+      security: [{ apiKeyAuth: [] }, { bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Deleted }
+
+  /{slug}:
+    get:
+      tags: [misc]
+      summary: Follow a short link (redirects, counts the visit)
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string } }
+      responses:
+        "307": { description: Redirect to the original url }
+        "400": { description: Unknown or expired slug }
+
+  /healthz:
+    get:
+      tags: [misc]
+      summary: Health check
+      responses:
+        "200": { description: Service healthy }
+        "503": { description: Database unreachable }

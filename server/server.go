@@ -12,6 +12,7 @@ import (
 	"github.com/negeek/short-access/api/v1/apikeys"
 	"github.com/negeek/short-access/api/v1/urls"
 	"github.com/negeek/short-access/api/v1/users"
+	"github.com/negeek/short-access/docs"
 	v1middlewares "github.com/negeek/short-access/middlewares/v1"
 	apikeyrepo "github.com/negeek/short-access/repository/v1/apikey"
 	numberrepo "github.com/negeek/short-access/repository/v1/number"
@@ -40,6 +41,8 @@ func NewRouter(pool *pgxpool.Pool) http.Handler {
 	router.Use(v1middlewares.CORS)
 	router.HandleFunc("/", api.Home).Methods("GET")
 	router.HandleFunc("/healthz", api.Health(pool)).Methods("GET")
+	router.HandleFunc("/docs", docs.UI).Methods("GET")
+	router.HandleFunc("/openapi.yaml", docs.Spec).Methods("GET")
 	router.HandleFunc("/{slug}", urlHandler.UrlRedirect).Methods("GET")
 	routes.V1routes(router.StrictSlash(true), urlHandler, userHandler, apiKeyHandler, auth)
 	return router
