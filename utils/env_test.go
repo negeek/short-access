@@ -14,6 +14,10 @@ export EXPORTED=yes
 QUOTED="a value"
 SINGLE='another'
 PLAIN=plain
+  SPACED  =  trimmed
+EMPTY=
+DB_URL=postgres://u:p@host:5432/db?sslmode=disable
+IGNORED_NO_EQUALS
 
 PREEXISTING=from-file
 `
@@ -33,12 +37,20 @@ PREEXISTING=from-file
 		"QUOTED":      "a value",
 		"SINGLE":      "another",
 		"PLAIN":       "plain",
-		"PREEXISTING": "from-env",
+		"SPACED":      "trimmed",                                     // key and value are trimmed
+		"EMPTY":       "",                                            // empty value is allowed
+		"DB_URL":      "postgres://u:p@host:5432/db?sslmode=disable", // only the first '=' splits
+		"PREEXISTING": "from-env",                                    // env wins over the file
 	}
 	for key, want := range cases {
 		if got := os.Getenv(key); got != want {
 			t.Errorf("%s = %q, want %q", key, got, want)
 		}
+	}
+
+	// A line without '=' is not a variable and must be skipped.
+	if _, ok := os.LookupEnv("IGNORED_NO_EQUALS"); ok {
+		t.Error("a line without '=' should be ignored")
 	}
 }
 
