@@ -48,8 +48,10 @@ func NewService(urls *urlrepo.Repository, numbers *numberrepo.Repository) *Servi
 }
 
 // Shorten returns a short url for the given original url. If the same user has
-// already shortened it, the existing record is returned instead of a new one.
-// An optional expiry can be set at creation (time unit + value, both or neither).
+// already shortened it, the existing record is returned; an expired one is
+// revived with the requested expiry (or cleared to never expire) so the caller
+// always gets back a working link. An optional expiry can be set at creation
+// (time unit + value, both or neither).
 func (s *Service) Shorten(ctx context.Context, userID uuid.UUID, in *Url, unit string, value int) (*Url, error) {
 	expireAt, err := optionalExpiry(unit, value)
 	if err != nil {
@@ -62,6 +64,16 @@ func (s *Service) Shorten(ctx context.Context, userID uuid.UUID, in *Url, unit s
 		return nil, apperr.Internal(err)
 	}
 	if found {
+		if in.Expired() {
+			if expireAt != nil {
+				in.ExpireAt = *expireAt
+			} else {
+				in.ExpireAt = time.Time{} // no new expiry: let it live indefinitely
+			}
+			if err := s.urls.Update(ctx, in); err != nil {
+				return nil, apperr.Internal(err)
+			}
+		}
 		return in, nil
 	}
 

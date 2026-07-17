@@ -114,6 +114,56 @@ func TestShortenWithExpiryAtCreation(t *testing.T) {
 	}
 }
 
+func TestReshortenRevivesExpiredUrl(t *testing.T) {
+	srv := newServer(t)
+	defer srv.Close()
+	client := noRedirectClient()
+
+	token := signup(t, client, srv, "revive@example.com", "secret123")
+	key := createKey(t, client, srv, token)
+	target := "https://example.com/revive"
+
+	// Shorten with a 1 second expiry.
+	resp, env := request(t, client, srv, http.MethodPost, "/api/v1/url_mgt/shorten/",
+		map[string]string{"X-API-Key": key},
+		map[string]any{"original_url": target, "time_unit": "s", "time_value": 1})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("shorten: %d (%s)", resp.StatusCode, env.Message)
+	}
+	var first struct {
+		ShortUrl string `json:"short_url"`
+	}
+	json.Unmarshal(env.Data, &first)
+
+	// Let it expire, then confirm the link is dead.
+	time.Sleep(1500 * time.Millisecond)
+	resp, _ = request(t, client, srv, http.MethodGet, "/"+first.ShortUrl, nil, nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected expired link to be rejected, got %d", resp.StatusCode)
+	}
+
+	// Re-shorten the same url with no expiry: it comes back on the same slug.
+	resp, env = request(t, client, srv, http.MethodPost, "/api/v1/url_mgt/shorten/",
+		map[string]string{"X-API-Key": key},
+		map[string]string{"original_url": target})
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("re-shorten: %d (%s)", resp.StatusCode, env.Message)
+	}
+	var second struct {
+		ShortUrl string `json:"short_url"`
+	}
+	json.Unmarshal(env.Data, &second)
+	if second.ShortUrl != first.ShortUrl {
+		t.Fatalf("expected the same slug, got %q vs %q", second.ShortUrl, first.ShortUrl)
+	}
+
+	// The revived link redirects again.
+	resp, _ = request(t, client, srv, http.MethodGet, "/"+second.ShortUrl, nil, nil)
+	if resp.StatusCode != http.StatusTemporaryRedirect {
+		t.Fatalf("expected revived link to redirect, got %d", resp.StatusCode)
+	}
+}
+
 func TestUrlEndpointAcceptsBearerToken(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
