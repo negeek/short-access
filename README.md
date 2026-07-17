@@ -165,12 +165,15 @@ Run `make help` to see everything.
 
 ### Tests
 
-Tests run against a real database. Point them at a throwaway one and run:
+Tests run against a real database. The compose file ships a throwaway one behind
+a `test` profile, so the easiest path is:
 
 ```bash
-export TEST_DATABASE_URL='postgres://sauser:sapass@localhost:5432/sadb_test?sslmode=disable'
-make test
+make test-db-up        # start the throwaway Postgres (host port 5444)
+make test-integration  # run the suite against it
+make test-db-down      # tear it down when you're done
 ```
 
-The harness drops and recreates the schema, runs migrations, and clears the
-tables between tests. Without `TEST_DATABASE_URL` set, the database tests skip.
+`make test` on its own runs everything too, but the database-backed tests skip
+themselves unless `TEST_DATABASE_URL` is set. The harness drops and recreates
+the schema, runs migrations, and clears the tables between tests.

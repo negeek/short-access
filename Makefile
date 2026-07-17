@@ -8,10 +8,12 @@ endif
 DATABASE_URL ?= postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 MIGRATIONS_DIR := db/migrations
 
-.PHONY: help run build fmt lint test tidy migrate-up migrate-down migrate-create docker-up docker-down
+TEST_DATABASE_URL ?= postgres://sauser:sapass@localhost:5444/sadb_test?sslmode=disable
+
+.PHONY: help run build format lint test test-integration tidy migrate-up migrate-down migrate-create docker-up docker-down test-db-up test-db-down
 
 help: ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(firstword $(MAKEFILE_LIST)) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 run: ## Run the server locally
 	go run ./cmd/short-access
@@ -19,14 +21,17 @@ run: ## Run the server locally
 build: ## Build the server binary into ./bin
 	go build -o bin/short-access ./cmd/short-access
 
-fmt: ## Format all Go code
+format: ## Format all Go code
 	go fmt ./...
 
 lint: ## Run the linter (needs golangci-lint installed)
 	golangci-lint run
 
-test: ## Run all tests
+test: ## Run all tests (database tests skip unless TEST_DATABASE_URL is set)
 	go test ./...
+
+test-integration: ## Run tests against the local test database (run test-db-up first)
+	TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test ./...
 
 tidy: ## Tidy up go.mod and go.sum
 	go mod tidy
@@ -45,3 +50,9 @@ docker-up: ## Start the stack with Docker Compose
 
 docker-down: ## Stop the stack and remove containers
 	docker compose down
+
+test-db-up: ## Start the throwaway test database
+	docker compose --profile test up -d test-db
+
+test-db-down: ## Stop and remove the throwaway test database
+	docker compose --profile test rm -sf test-db
