@@ -11,8 +11,9 @@ RUN go mod download
 
 COPY . .
 
-# Build a static binary. Migrations are embedded, so the image needs nothing else.
-RUN CGO_ENABLED=0 go build -o /short-access ./cmd/short-access
+# Build a static binary. -s -w strip the symbol and debug tables to keep it small.
+# Migrations are embedded, so the image needs nothing else.
+RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /short-access ./cmd/short-access
 
 # --- run stage ---
 FROM alpine:3.20
