@@ -4,13 +4,12 @@ Short-Access is a self-hostable URL shortener with a small, friendly HTTP API.
 You run it on your own machine or server, point your application at it, and it
 hands back short links — with expiry, custom slugs, visit counting, and API keys.
 
-It is built to be lean on purpose. There is no web framework and only a handful
-of dependencies: Go's standard library, `gorilla/mux` for routing, and Postgres
-for storage. That leanness is the whole idea — it keeps the compiled binary
-small, startup close to instant, and memory use low, so a single modest
-container comfortably serves a lot of redirects. Fewer moving parts also means
-less to audit and less that can break. Migrations are even embedded in the
-binary, so one image both migrates the database and serves traffic.
+It is built to be lean, and that is the whole point: wanting to shorten a few
+URLs shouldn't mean standing up a heavy service that eats into your
+infrastructure. Staying lean keeps the compiled binary small, startup close to
+instant, and memory use low, so a single modest container comfortably serves a
+lot of redirects without asking much of the box it runs on. Curious how it pulls
+that off? See [how it stays lean](LEAN.md).
 
 ## How auth works
 
@@ -66,7 +65,8 @@ docker compose up -d
 ```
 
 Postgres comes up, the migration container runs and exits, and the server starts
-serving on `http://localhost:8080`.
+serving on `http://localhost:8080`. Open **`http://localhost:8080/docs`** to
+browse and try the API right away (interactive Swagger docs).
 
 ### Image tags
 
@@ -93,7 +93,8 @@ tag on the repo; you could pin a specific one instead, like `@v1.0.0`.
 
 You still need a Postgres for it to talk to. Set the same environment variables
 as above, apply the schema once with `short-access migrate up`, then run
-`short-access` to serve.
+`short-access` to serve. Once it's up, the interactive API docs are at
+**`http://localhost:8080/docs`**.
 
 ## What the API can do
 
