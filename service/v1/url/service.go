@@ -3,6 +3,7 @@ package url
 
 import (
 	"context"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
@@ -279,10 +280,11 @@ func (s *Service) Redirect(ctx context.Context, slug string) (*Url, error) {
 		return nil, apperr.BadRequest("Url has expired")
 	}
 
-	// Count the visit with an atomic increment rather than a read-modify-write,
-	// so two simultaneous visits can't overwrite each other's count.
+	// Counting the visit is best-effort: an atomic increment (so simultaneous
+	// visits can't overwrite each other) but a failure only gets logged, never
+	// blocks the redirect the visitor actually came for.
 	if err := s.urls.IncrementAccessCount(ctx, target.Id); err != nil {
-		return nil, apperr.Internal(err)
+		slog.Error("could not count visit", "url_id", target.Id, "error", err)
 	}
 	return target, nil
 }
